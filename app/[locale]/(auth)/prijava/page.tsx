@@ -26,10 +26,21 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const success = await login({ email, password });
+      const result = await login({ email, password });
 
-      if (success) {
-        router.push("/dashboard");
+      if (result.success) {
+        // Check if user is admin and redirect accordingly
+        const meResponse = await fetch("/api/auth/me");
+        if (meResponse.ok) {
+          const userData = await meResponse.json();
+          if (userData.user?.role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push("/dashboard");
+          }
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         setError(t("invalidCredentials"));
       }

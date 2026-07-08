@@ -1,41 +1,66 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Container, Card, CardHeader, CardTitle } from "@/components/ui";
 import { StatsCards, CertificationQueue } from "@/components/admin";
-import { Users, BookOpen, Award, TrendingUp } from "lucide-react";
+import { Users, BookOpen, Award, TrendingUp, ShoppingBag } from "lucide-react";
 
-const recentActivity = [
-  {
-    id: 1,
-    type: "signup",
-    message: "Nova registracija: Petra Novak",
-    time: "Prije 5 minuta",
-    icon: Users,
-  },
-  {
-    id: 2,
-    type: "completion",
-    message: "Ana Kovačević je završila Razinu 2",
-    time: "Prije 1 sat",
-    icon: Award,
-  },
-  {
-    id: 3,
-    type: "progress",
-    message: "Marija Horvat je započela Razinu 1",
-    time: "Prije 2 sata",
-    icon: BookOpen,
-  },
-  {
-    id: 4,
-    type: "purchase",
-    message: "Nova kupnja: Ivana Babić - Napredni paket",
-    time: "Prije 3 sata",
-    icon: TrendingUp,
-  },
-];
+interface RecentStudent {
+  id: string;
+  fullName: string;
+  createdAt: string;
+}
+
+interface RecentOrder {
+  id: string;
+  customerName: string;
+  total: number;
+  createdAt: string;
+}
 
 export default function AdminDashboardPage() {
+  const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchRecentActivity() {
+      try {
+        // Fetch recent students
+        const studentsRes = await fetch("/api/admin/students?limit=3");
+        if (studentsRes.ok) {
+          const data = await studentsRes.json();
+          setRecentStudents(data.students || []);
+        }
+
+        // Fetch recent orders
+        const ordersRes = await fetch("/api/admin/orders?limit=3");
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
+          setRecentOrders(data.orders || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch recent activity:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRecentActivity();
+  }, []);
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `Prije ${diffMins} min`;
+    if (diffHours < 24) return `Prije ${diffHours} h`;
+    return `Prije ${diffDays} dana`;
+  };
+
   return (
     <Container size="xl">
       <div className="mb-6">
@@ -59,25 +84,51 @@ export default function AdminDashboardPage() {
             </CardHeader>
 
             <div className="space-y-4">
-              {recentActivity.map((activity) => {
-                const Icon = activity.icon;
-                return (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon className="h-4 w-4 text-secondary" />
+              {loading ? (
+                <p className="text-sm text-gray-500">Učitavanje...</p>
+              ) : (
+                <>
+                  {recentStudents.map((student) => (
+                    <div
+                      key={student.id}
+                      className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                        <Users className="h-4 w-4 text-secondary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-primary">
+                          Nova registracija: {student.fullName || "Nepoznato"}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {formatTimeAgo(student.createdAt)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-primary">{activity.message}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {activity.time}
-                      </p>
+                  ))}
+                  {recentOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <ShoppingBag className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-primary">
+                          Nova narudžba: {order.customerName} - {order.total.toFixed(2)} €
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {formatTimeAgo(order.createdAt)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                  {recentStudents.length === 0 && recentOrders.length === 0 && (
+                    <p className="text-sm text-gray-500">Nema nedavne aktivnosti</p>
+                  )}
+                </>
+              )}
             </div>
           </Card>
 
