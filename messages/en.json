@@ -1,0 +1,258 @@
+{
+  "metadata": {
+    "title": "Brendia Pro® - Learning Platform",
+    "description": "Your professional education for eyebrow branding"
+  },
+  "common": {
+    "brandName": "Brendia Pro®",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "user": "User",
+    "email": "Email",
+    "password": "Password",
+    "phone": "Phone",
+    "product": "product",
+    "products": "products"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "level1": "Level 1",
+    "level2": "Level 2",
+    "webshop": "Webshop",
+    "certificate": "Certificate",
+    "profile": "Profile",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "cart": "Cart",
+    "notifications": "Notifications",
+    "myProfile": "My Profile",
+    "settings": "Settings",
+    "logout": "Log out",
+    "needHelp": "Need help?",
+    "contactSupport": "Contact our support."
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to access your education",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Forgot password?",
+      "submitButton": "Sign in",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Register",
+      "invalidCredentials": "Invalid email address or password.",
+      "genericError": "An error occurred. Please try again.",
+      "demoHint": "Demo access:",
+      "demoInstructions": "Enter any email and password"
+    },
+    "register": {
+      "title": "Create an account",
+      "subtitle": "Join the Brendia Pro® community",
+      "fullNameLabel": "Full name",
+      "fullNamePlaceholder": "Jane Doe",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "phoneLabel": "Phone (optional)",
+      "phonePlaceholder": "+1 234 567 8900",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "passwordHint": "At least 8 characters",
+      "confirmPasswordLabel": "Confirm password",
+      "submitButton": "Register",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "termsNotice": "By registering, you accept our",
+      "termsLink": "Terms of Service",
+      "privacyLink": "Privacy Policy",
+      "errors": {
+        "fullNameRequired": "Full name is required.",
+        "emailRequired": "Email address is required.",
+        "emailInvalid": "Please enter a valid email address.",
+        "passwordRequired": "Password is required.",
+        "passwordTooShort": "Password must be at least 8 characters.",
+        "passwordMismatch": "Passwords do not match."
+      },
+      "demoDisabled": "Registration is temporarily disabled. This is a demo version."
+    }
+  },
+  "dashboard": {
+    "welcome": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "subtitle": "Continue your education and become a certified expert."
+    },
+    "continueLearning": {
+      "title": "Continue where you left off",
+      "chapter": "Chapter",
+      "continueButton": "Continue learning"
+    },
+    "progress": {
+      "title": "Your progress",
+      "level1Title": "Level 1: Basics",
+      "level1Description": "Learn fundamental eyebrow branding techniques.",
+      "level2Title": "Level 2: Advanced",
+      "level2Description": "Enhance your skills with advanced techniques.",
+      "completed": "Completed",
+      "inProgress": "In progress",
+      "notStarted": "Not started",
+      "reviewAgain": "Review again",
+      "continueLesson": "Continue learning",
+      "start": "Start"
+    },
+    "certification": {
+      "congratulations": "Congratulations! You're ready for certification.",
+      "description": "You've completed all levels. Apply for certification and become a certified Brendia Pro® expert.",
+      "applyButton": "Apply"
+    },
+    "kit": {
+      "title": "Your kit",
+      "preparing": "Preparing",
+      "preparingDescription": "Your kit is being prepared for shipping.",
+      "shipped": "Shipped",
+      "shippedDescription": "Your kit has been shipped and delivery is expected.",
+      "delivered": "Delivered",
+      "deliveredDescription": "Your kit has been successfully delivered.",
+      "stepPreparing": "Preparing",
+      "stepShipping": "Shipping",
+      "stepDelivered": "Received"
+    }
+  },
+  "webshop": {
+    "title": "Webshop",
+    "subtitle": "Professional equipment and products for hair extensions",
+    "allProducts": "All products",
+    "freeShipping": "Free shipping on orders over €100",
+    "deliveryTime": "Delivery within 2-5 business days in Croatia",
+    "categories": {
+      "extensions": "Extensions",
+      "tools": "Tools",
+      "care": "Care"
+    },
+    "cart": {
+      "title": "Cart",
+      "empty": "Your cart is empty",
+      "addProducts": "Add products to your cart",
+      "continueShopping": "Continue shopping",
+      "subtotal": "Subtotal",
+      "shippingNote": "Shipping calculated at checkout",
+      "viewCart": "View cart",
+      "checkout": "Checkout",
+      "closeCart": "Close cart"
+    }
+  },
+  "certification": {
+    "title": "Certification",
+    "subtitle": "Become a certified Brendia Pro® expert.",
+    "notAvailable": {
+      "title": "Certification not yet available",
+      "description": "To apply for certification, you must complete all education levels.",
+      "backButton": "Back to learning"
+    },
+    "application": {
+      "title": "Certification Application",
+      "description": "You've completed all education levels and meet the requirements for Brendia Pro® certification. Apply for a review of your work and receive your official certificate.",
+      "requirementsTitle": "Certification requirements:",
+      "requirement1": "Completed Level 1 - Basics (100%)",
+      "requirement2": "Completed Level 2 - Advanced (100%)",
+      "requirement3": "Active Brendia Pro® subscription",
+      "confirmation": "I confirm that I have completed all education and am ready for the certification review. I understand that my work will be reviewed before the certificate is issued.",
+      "submitButton": "Submit certification application"
+    },
+    "status": {
+      "title": "Certification Status",
+      "applied": "Applied",
+      "underReview": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "reviewMessage": "Your application is under review. We will notify you of the result via email.",
+      "rejectionReason": "Rejection reason:"
+    },
+    "certificate": {
+      "title": "Brendia Pro® Certificate",
+      "confirmation": "This certifies that",
+      "completedEducation": "has successfully completed the education and earned the title of",
+      "expertTitle": "Certified Brendia Pro® Expert",
+      "certificateNumber": "Certificate number:",
+      "downloadPdf": "Download PDF",
+      "share": "Share",
+      "usageNote": "Your certificate is an official document that you can use to promote your business."
+    },
+    "demo": {
+      "title": "Demo controls:",
+      "subtitle": "Test different statuses"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Manage your personal information and settings.",
+    "personalInfo": {
+      "title": "Personal Information",
+      "fullName": "Full name",
+      "email": "Email address",
+      "emailHint": "Email address cannot be changed.",
+      "phone": "Phone",
+      "phonePlaceholder": "+1 234 567 8900",
+      "saveButton": "Save changes",
+      "saved": "Changes saved!"
+    },
+    "password": {
+      "title": "Change Password",
+      "current": "Current password",
+      "new": "New password",
+      "newHint": "At least 8 characters",
+      "confirm": "Confirm new password",
+      "changeButton": "Change password",
+      "demoDisabled": "Password change is not available in demo version."
+    },
+    "devices": {
+      "title": "Active Devices",
+      "current": "Current",
+      "lastActive": "Last active:",
+      "logoutButton": "Log out",
+      "maxDevices": "You can be logged in on a maximum of 2 devices simultaneously."
+    },
+    "purchases": {
+      "title": "Purchase History",
+      "date": "Date",
+      "description": "Description",
+      "amount": "Amount",
+      "status": "Status",
+      "paid": "Paid",
+      "pending": "Pending",
+      "refunded": "Refunded",
+      "empty": "You have no purchase history."
+    }
+  },
+  "course": {
+    "level1": "Level 1",
+    "level2": "Level 2"
+  },
+  "demo": {
+    "downloadNotAvailable": "Certificate download is not available in demo version.",
+    "shareNotAvailable": "Certificate sharing is not available in demo version."
+  },
+  "languageSwitcher": {
+    "hr": "HR",
+    "en": "EN"
+  }
+}

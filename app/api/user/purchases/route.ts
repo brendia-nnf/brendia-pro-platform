@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+// GET - Fetch user purchases (enrollments + webshop orders)
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabaseClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fetch course enrollments
+    const { data: enrollments, error: enrollmentsError } = await supabase
+      .from("enrollments")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("purchased_at", { ascending: false });
+
+    if (enrollmentsError) {
+      console.error("Fetch enrollments error:", enrollmentsError);
+    }
+
+    // Fetch webshop orders
+    const { data: orders, error: ordersError } = await supabase
+      .from("webshop_orders")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (ordersError) {
+      console.error("Fetch orders error:", ordersError);
+    }
+
+    // Combine and format purchases
+    const courseNames: Record<string, string> = {
+      foundation: "Brendia Pro Artist",
+      master: "Brendia Pro Master",
+      advanced: "Advanced Brendia Pro Artist",
+    };
+
+    const purchases = [
+      ...(enrollments || []).map((e) => ({
+        id: e.id,
+        type: "course" as const,
+        description: courseNames[e.course_id] || e.course_id,
+        amount: e.amount_paid / 100,
+        currency: e.currency,
+        status: e.status,
+        date: e.purchased_at,
+      })),
+      ...(orders || []).map((o) => ({
+        id: o.id,
+        type: "webshop" as const,
+        description: `Order #${o.order_number}`,
+        amount: o.total / 100,
+        currency: o.currency,
+        status: o.status,
+        date: o.created_at,
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return NextResponse.json({ purchases });
+  } catch (error) {
+    console.error("Get purchases error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

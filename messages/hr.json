@@ -1,0 +1,258 @@
+{
+  "metadata": {
+    "title": "Brendia Pro® - Platforma za učenje",
+    "description": "Vaša profesionalna edukacija za brendiranje obrva"
+  },
+  "common": {
+    "brandName": "Brendia Pro®",
+    "loading": "Učitavanje...",
+    "save": "Spremi",
+    "cancel": "Odustani",
+    "confirm": "Potvrdi",
+    "delete": "Obriši",
+    "edit": "Uredi",
+    "close": "Zatvori",
+    "back": "Natrag",
+    "next": "Dalje",
+    "continue": "Nastavi",
+    "submit": "Pošalji",
+    "search": "Pretraži",
+    "filter": "Filter",
+    "all": "Sve",
+    "yes": "Da",
+    "no": "Ne",
+    "or": "ili",
+    "and": "i",
+    "user": "Korisnik",
+    "email": "Email",
+    "password": "Lozinka",
+    "phone": "Telefon",
+    "product": "proizvod",
+    "products": "proizvoda"
+  },
+  "navigation": {
+    "dashboard": "Nadzorna ploča",
+    "level1": "Razina 1",
+    "level2": "Razina 2",
+    "webshop": "Webshop",
+    "certificate": "Certifikat",
+    "profile": "Profil",
+    "openMenu": "Otvori izbornik",
+    "closeMenu": "Zatvori izbornik",
+    "cart": "Košarica",
+    "notifications": "Obavijesti",
+    "myProfile": "Moj profil",
+    "settings": "Postavke",
+    "logout": "Odjava",
+    "needHelp": "Trebate pomoć?",
+    "contactSupport": "Kontaktirajte našu podršku."
+  },
+  "auth": {
+    "login": {
+      "title": "Dobrodošli natrag",
+      "subtitle": "Prijavite se za pristup vašoj edukaciji",
+      "emailLabel": "Email adresa",
+      "emailPlaceholder": "vasa@email.com",
+      "passwordLabel": "Lozinka",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Zaboravljena lozinka?",
+      "submitButton": "Prijava",
+      "noAccount": "Nemate račun?",
+      "registerLink": "Registrirajte se",
+      "invalidCredentials": "Neispravna email adresa ili lozinka.",
+      "genericError": "Došlo je do greške. Pokušajte ponovo.",
+      "demoHint": "Demo pristup:",
+      "demoInstructions": "Unesite bilo koji email i lozinku"
+    },
+    "register": {
+      "title": "Kreirajte račun",
+      "subtitle": "Pridružite se Brendia Pro® zajednici",
+      "fullNameLabel": "Ime i prezime",
+      "fullNamePlaceholder": "Ana Kovačević",
+      "emailLabel": "Email adresa",
+      "emailPlaceholder": "vasa@email.com",
+      "phoneLabel": "Telefon (opcionalno)",
+      "phonePlaceholder": "+385 91 234 5678",
+      "passwordLabel": "Lozinka",
+      "passwordPlaceholder": "••••••••",
+      "passwordHint": "Najmanje 8 znakova",
+      "confirmPasswordLabel": "Potvrdite lozinku",
+      "submitButton": "Registrirajte se",
+      "hasAccount": "Već imate račun?",
+      "loginLink": "Prijavite se",
+      "termsNotice": "Registracijom prihvaćate naše",
+      "termsLink": "Uvjete korištenja",
+      "privacyLink": "Politiku privatnosti",
+      "errors": {
+        "fullNameRequired": "Ime i prezime je obavezno.",
+        "emailRequired": "Email adresa je obavezna.",
+        "emailInvalid": "Unesite ispravnu email adresu.",
+        "passwordRequired": "Lozinka je obavezna.",
+        "passwordTooShort": "Lozinka mora imati najmanje 8 znakova.",
+        "passwordMismatch": "Lozinke se ne podudaraju."
+      },
+      "demoDisabled": "Registracija je privremeno onemogućena. Ovo je demo verzija."
+    }
+  },
+  "dashboard": {
+    "welcome": {
+      "morning": "Dobro jutro",
+      "afternoon": "Dobar dan",
+      "evening": "Dobra večer",
+      "subtitle": "Nastavite svoju edukaciju i postanite certificirani stručnjak."
+    },
+    "continueLearning": {
+      "title": "Nastavi gdje si stao/la",
+      "chapter": "Poglavlje",
+      "continueButton": "Nastavi učenje"
+    },
+    "progress": {
+      "title": "Vaš napredak",
+      "level1Title": "Razina 1: Osnove",
+      "level1Description": "Naučite temeljne tehnike brendiranja obrva.",
+      "level2Title": "Razina 2: Napredna razina",
+      "level2Description": "Unaprijedite svoje vještine s naprednim tehnikama.",
+      "completed": "Završeno",
+      "inProgress": "U tijeku",
+      "notStarted": "Nije započeto",
+      "reviewAgain": "Pregledaj ponovo",
+      "continueLesson": "Nastavi učenje",
+      "start": "Započni"
+    },
+    "certification": {
+      "congratulations": "Čestitamo! Spremni ste za certifikaciju.",
+      "description": "Završili ste sve razine. Prijavite se za certifikaciju i postanite certificirani Brendia Pro® stručnjak.",
+      "applyButton": "Prijavi se"
+    },
+    "kit": {
+      "title": "Vaš kit",
+      "preparing": "U pripremi",
+      "preparingDescription": "Vaš kit se priprema za slanje.",
+      "shipped": "Na putu",
+      "shippedDescription": "Vaš kit je poslan i očekuje se dostava.",
+      "delivered": "Dostavljeno",
+      "deliveredDescription": "Vaš kit je uspješno dostavljen.",
+      "stepPreparing": "Priprema",
+      "stepShipping": "Dostava",
+      "stepDelivered": "Primljeno"
+    }
+  },
+  "webshop": {
+    "title": "Webshop",
+    "subtitle": "Profesionalna oprema i proizvodi za ekstenzije kose",
+    "allProducts": "Svi proizvodi",
+    "freeShipping": "Besplatna dostava za narudžbe iznad 100 €",
+    "deliveryTime": "Dostava unutar 2-5 radnih dana na području Hrvatske",
+    "categories": {
+      "extensions": "Ekstenzije",
+      "tools": "Alati",
+      "care": "Njega"
+    },
+    "cart": {
+      "title": "Košarica",
+      "empty": "Vaša košarica je prazna",
+      "addProducts": "Dodajte proizvode u košaricu",
+      "continueShopping": "Nastavi kupovinu",
+      "subtotal": "Međuzbroj",
+      "shippingNote": "Dostava se obračunava pri plaćanju",
+      "viewCart": "Pregledaj košaricu",
+      "checkout": "Plati",
+      "closeCart": "Zatvori košaricu"
+    }
+  },
+  "certification": {
+    "title": "Certifikacija",
+    "subtitle": "Postanite certificirani Brendia Pro® stručnjak.",
+    "notAvailable": {
+      "title": "Certifikacija još nije dostupna",
+      "description": "Da biste se mogli prijaviti za certifikaciju, morate završiti sve razine edukacije.",
+      "backButton": "Natrag na učenje"
+    },
+    "application": {
+      "title": "Prijava za certifikaciju",
+      "description": "Završili ste sve razine edukacije i ispunjavate uvjete za Brendia Pro® certifikaciju. Prijavite se za pregled vašeg rada i dobivanje službenog certifikata.",
+      "requirementsTitle": "Uvjeti certifikacije:",
+      "requirement1": "Završena Razina 1 - Osnove (100%)",
+      "requirement2": "Završena Razina 2 - Napredna razina (100%)",
+      "requirement3": "Aktivna pretplata na Brendia Pro®",
+      "confirmation": "Potvrđujem da sam završio/la svu edukaciju i spreman/na sam za certifikacijski pregled. Razumijem da će moj rad biti pregledan prije izdavanja certifikata.",
+      "submitButton": "Pošalji prijavu za certifikaciju"
+    },
+    "status": {
+      "title": "Status certifikacije",
+      "applied": "Prijavljeno",
+      "underReview": "Na pregledu",
+      "approved": "Odobreno",
+      "rejected": "Odbijeno",
+      "reviewMessage": "Vaša prijava je na pregledu. Obavijestit ćemo vas o rezultatu putem emaila.",
+      "rejectionReason": "Razlog odbijanja:"
+    },
+    "certificate": {
+      "title": "Brendia Pro® Certifikat",
+      "confirmation": "Ovime potvrđujemo da je",
+      "completedEducation": "uspješno završila edukaciju i stekla zvanje",
+      "expertTitle": "Certificirani Brendia Pro® Stručnjak",
+      "certificateNumber": "Broj certifikata:",
+      "downloadPdf": "Preuzmi PDF",
+      "share": "Podijeli",
+      "usageNote": "Vaš certifikat je službeni dokument koji možete koristiti za promociju vašeg poslovanja."
+    },
+    "demo": {
+      "title": "Demo kontrole:",
+      "subtitle": "Testirajte različite statuse"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "subtitle": "Upravljajte svojim osobnim podacima i postavkama.",
+    "personalInfo": {
+      "title": "Osobni podaci",
+      "fullName": "Ime i prezime",
+      "email": "Email adresa",
+      "emailHint": "Email adresa se ne može promijeniti.",
+      "phone": "Telefon",
+      "phonePlaceholder": "+385 91 234 5678",
+      "saveButton": "Spremi promjene",
+      "saved": "Promjene su spremljene!"
+    },
+    "password": {
+      "title": "Promjena lozinke",
+      "current": "Trenutna lozinka",
+      "new": "Nova lozinka",
+      "newHint": "Najmanje 8 znakova",
+      "confirm": "Potvrdite novu lozinku",
+      "changeButton": "Promijeni lozinku",
+      "demoDisabled": "Promjena lozinke nije dostupna u demo verziji."
+    },
+    "devices": {
+      "title": "Aktivni uređaji",
+      "current": "Trenutni",
+      "lastActive": "Zadnja aktivnost:",
+      "logoutButton": "Odjavi",
+      "maxDevices": "Možete biti prijavljeni na maksimalno 2 uređaja istovremeno."
+    },
+    "purchases": {
+      "title": "Povijest kupnje",
+      "date": "Datum",
+      "description": "Opis",
+      "amount": "Iznos",
+      "status": "Status",
+      "paid": "Plaćeno",
+      "pending": "Na čekanju",
+      "refunded": "Vraćeno",
+      "empty": "Nemate povijest kupnje."
+    }
+  },
+  "course": {
+    "level1": "Razina 1",
+    "level2": "Razina 2"
+  },
+  "demo": {
+    "downloadNotAvailable": "Preuzimanje certifikata nije dostupno u demo verziji.",
+    "shareNotAvailable": "Dijeljenje certifikata nije dostupno u demo verziji."
+  },
+  "languageSwitcher": {
+    "hr": "HR",
+    "en": "EN"
+  }
+}
