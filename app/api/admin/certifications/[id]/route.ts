@@ -55,7 +55,7 @@ export async function PATCH(
       .from("certifications")
       .select("*")
       .eq("id", certificationId)
-      .single();
+      .single() as { data: { id: string; status: string; user_id: string } | null; error: unknown };
 
     if (fetchError || !certification) {
       return NextResponse.json(
