@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { getClientId, checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
 
 const resetPasswordSchema = z.object({
   password: z
@@ -13,6 +14,22 @@ const resetPasswordSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const clientId = getClientId(request);
+  const rateLimit = checkRateLimit(clientId, rateLimitConfigs.auth);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many password reset attempts. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+        },
+      }
+    );
+  }
+
   try {
     const body = await request.json();
 

@@ -1,12 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { getClientId, checkRateLimit, rateLimitConfigs } from "@/lib/security/rate-limit";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
 export async function POST(request: NextRequest) {
+  // Rate limiting - stricter for password reset
+  const clientId = getClientId(request);
+  const rateLimit = checkRateLimit(clientId, {
+    windowMs: 60 * 1000,
+    maxRequests: 3,
+    message: "Too many password reset attempts. Please try again later.",
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many password reset attempts. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString(),
+        },
+      }
+    );
+  }
+
   try {
     const body = await request.json();
 

@@ -1,42 +1,120 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Container, Button } from "@/components/ui";
 import {
   ApplicationForm,
   StatusTracker,
   CertificateDownload,
 } from "@/components/certification";
-import { useProgress } from "@/hooks/useProgress";
-import { useAuth } from "@/hooks/useAuth";
-import { getCertificationForUser } from "@/lib/mock-data";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import type { CertificationStatus } from "@/lib/types";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock, Loader2, RefreshCw } from "lucide-react";
+
+interface CertificationData {
+  id: string;
+  status: CertificationStatus;
+  appliedAt?: string;
+  reviewedAt?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  certificateNumber?: string;
+  certificateUrl?: string;
+  requirements: {
+    level1Completed: boolean;
+    level1CompletedAt?: string;
+    level2Completed: boolean;
+    level2CompletedAt?: string;
+    level3Completed?: boolean;
+    level3CompletedAt?: string;
+  };
+}
 
 export default function CertificationPage() {
-  const { user } = useAuth();
-  const { canAccessCertification } = useProgress();
+  const [certification, setCertification] = useState<CertificationData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const t = useTranslations("certification");
 
-  const [certificationStatus, setCertificationStatus] =
-    useState<CertificationStatus>(() => {
-      const cert = user ? getCertificationForUser(user.id) : undefined;
-      return cert?.status || "eligible";
-    });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fetchCertification = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/certification");
+      if (!response.ok) {
+        throw new Error("Failed to fetch certification status");
+      }
+
+      const data = await response.json();
+      setCertification(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCertification();
+  }, []);
 
   const handleApply = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setCertificationStatus("applied");
-    setIsSubmitting(false);
+    try {
+      const response = await fetch("/api/certification/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to submit application");
+      }
+
+      // Refresh certification status
+      await fetchCertification();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to submit application");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
+  if (loading) {
+    return (
+      <Container size="md">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-secondary" />
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container size="md">
+        <div className="text-center py-12">
+          <p className="text-error mb-4">{error}</p>
+          <Button onClick={fetchCertification} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            {t("retry")}
+          </Button>
+        </div>
+      </Container>
+    );
+  }
+
+  // Check if user is eligible
+  const isEligible =
+    certification?.requirements.level1Completed &&
+    certification?.requirements.level2Completed;
+
   // Not eligible - hasn't completed all levels
-  if (!canAccessCertification()) {
+  if (!isEligible && certification?.status === "not_eligible") {
     return (
       <Container size="md">
         <div className="text-center py-12">
@@ -60,15 +138,15 @@ export default function CertificationPage() {
     );
   }
 
+  const certificationStatus = certification?.status || "eligible";
+
   return (
     <Container size="md">
       <div className="mb-6">
         <h1 className="text-3xl font-heading font-semibold text-primary">
           {t("title")}
         </h1>
-        <p className="text-gray-600 mt-1">
-          {t("subtitle")}
-        </p>
+        <p className="text-gray-600 mt-1">{t("subtitle")}</p>
       </div>
 
       <div className="space-y-6">
@@ -84,52 +162,31 @@ export default function CertificationPage() {
           certificationStatus === "rejected") && (
           <StatusTracker
             status={certificationStatus}
-            appliedAt={new Date()}
+            appliedAt={
+              certification?.appliedAt
+                ? new Date(certification.appliedAt)
+                : new Date()
+            }
             rejectionReason={
               certificationStatus === "rejected"
-                ? "Molimo vas da dostavite dodatne fotografije vašeg rada."
+                ? certification?.rejectionReason
                 : undefined
             }
           />
         )}
 
         {/* Show certificate download if approved */}
-        {certificationStatus === "approved" && (
+        {certificationStatus === "approved" && certification?.certificateNumber && (
           <CertificateDownload
-            certificateNumber="BP-2024-00123"
-            approvedAt={new Date()}
+            certificateNumber={certification.certificateNumber}
+            approvedAt={
+              certification.approvedAt
+                ? new Date(certification.approvedAt)
+                : new Date()
+            }
+            downloadUrl={certification.certificateUrl}
           />
         )}
-
-        {/* Demo controls - for testing different states */}
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-500 mb-3 text-center">
-            <strong>{t("demo.title")}</strong> {t("demo.subtitle")}
-          </p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {(
-              [
-                "eligible",
-                "applied",
-                "under_review",
-                "approved",
-                "rejected",
-              ] as CertificationStatus[]
-            ).map((status) => (
-              <button
-                key={status}
-                onClick={() => setCertificationStatus(status)}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                  certificationStatus === status
-                    ? "bg-secondary text-white"
-                    : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </Container>
   );

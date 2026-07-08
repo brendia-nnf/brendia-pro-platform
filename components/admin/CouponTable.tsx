@@ -1,23 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, Badge, Button, Input, Modal, ModalFooter } from "@/components/ui";
-import { mockCoupons } from "@/lib/mock-data";
 import { formatDate } from "@/lib/utils";
-import { Plus, Edit2, Trash2, Copy, Check } from "lucide-react";
-import type { Coupon } from "@/lib/types";
+import { Plus, Edit2, Trash2, Copy, Check, RefreshCw, Loader2 } from "lucide-react";
+
+interface Coupon {
+  id: string;
+  code: string;
+  description?: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  minimumOrder?: number;
+  maximumDiscount?: number;
+  usageLimit?: number;
+  usageCount: number;
+  onePerCustomer: boolean;
+  startsAt: string;
+  expiresAt?: string;
+  isActive: boolean;
+  createdAt: string;
+}
 
 export function CouponTable() {
-  const [coupons, setCoupons] = useState(mockCoupons);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<string | null>(null);
   const [newCoupon, setNewCoupon] = useState({
     code: "",
+    description: "",
     discountType: "percentage" as "percentage" | "fixed",
     discountValue: "",
+    minimumOrder: "",
     usageLimit: "",
     expiresAt: "",
   });
+
+  const fetchCoupons = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/admin/coupons");
+      if (!response.ok) {
+        throw new Error("Failed to fetch coupons");
+      }
+
+      const data = await response.json();
+      setCoupons(data.coupons || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCoupons();
+  }, [fetchCoupons]);
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -25,36 +68,122 @@ export function CouponTable() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const handleToggleActive = (couponId: string) => {
-    setCoupons((prev) =>
-      prev.map((c) =>
-        c.id === couponId ? { ...c, isActive: !c.isActive } : c
-      )
-    );
+  const handleToggleActive = async (couponId: string, currentActive: boolean) => {
+    setProcessing(couponId);
+    try {
+      const response = await fetch(`/api/admin/coupons/${couponId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !currentActive }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update coupon");
+      }
+
+      await fetchCoupons();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update coupon");
+    } finally {
+      setProcessing(null);
+    }
   };
 
-  const handleCreateCoupon = () => {
-    const coupon: Coupon = {
-      id: `coupon-${Date.now()}`,
-      code: newCoupon.code.toUpperCase(),
-      discountType: newCoupon.discountType,
-      discountValue: Number(newCoupon.discountValue),
-      usageLimit: newCoupon.usageLimit ? Number(newCoupon.usageLimit) : undefined,
-      usageCount: 0,
-      expiresAt: newCoupon.expiresAt ? new Date(newCoupon.expiresAt) : undefined,
-      isActive: true,
-      createdAt: new Date(),
-    };
-    setCoupons((prev) => [coupon, ...prev]);
-    setCreateModalOpen(false);
-    setNewCoupon({
-      code: "",
-      discountType: "percentage",
-      discountValue: "",
-      usageLimit: "",
-      expiresAt: "",
-    });
+  const handleCreateCoupon = async () => {
+    if (!newCoupon.code || !newCoupon.discountValue) return;
+
+    setProcessing("create");
+    try {
+      const response = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: newCoupon.code,
+          description: newCoupon.description || undefined,
+          discountType: newCoupon.discountType,
+          discountValue: Number(newCoupon.discountValue),
+          minimumOrder: newCoupon.minimumOrder
+            ? Number(newCoupon.minimumOrder) * 100
+            : undefined,
+          usageLimit: newCoupon.usageLimit
+            ? Number(newCoupon.usageLimit)
+            : undefined,
+          expiresAt: newCoupon.expiresAt
+            ? new Date(newCoupon.expiresAt).toISOString()
+            : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create coupon");
+      }
+
+      setCreateModalOpen(false);
+      setNewCoupon({
+        code: "",
+        description: "",
+        discountType: "percentage",
+        discountValue: "",
+        minimumOrder: "",
+        usageLimit: "",
+        expiresAt: "",
+      });
+      await fetchCoupons();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create coupon");
+    } finally {
+      setProcessing(null);
+    }
   };
+
+  const handleDeleteCoupon = async (couponId: string) => {
+    if (!confirm("Jeste li sigurni da želite obrisati ovaj kupon?")) return;
+
+    setProcessing(couponId);
+    try {
+      const response = await fetch(`/api/admin/coupons/${couponId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete coupon");
+      }
+
+      await fetchCoupons();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete coupon");
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+          <span className="ml-2 text-gray-500">Učitavanje...</span>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <div className="text-center py-8">
+          <p className="text-error mb-4">{error}</p>
+          <Button onClick={fetchCoupons} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Pokušaj ponovo
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -66,10 +195,15 @@ export function CouponTable() {
               Upravljajte promotivnim kodovima
             </p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novi kupon
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={fetchCoupons}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => setCreateModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novi kupon
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -144,12 +278,25 @@ export function CouponTable() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleToggleActive(coupon.id)}
+                        onClick={() => handleToggleActive(coupon.id, coupon.isActive)}
+                        disabled={processing === coupon.id}
                       >
-                        {coupon.isActive ? "Deaktiviraj" : "Aktiviraj"}
+                        {processing === coupon.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : coupon.isActive ? (
+                          "Deaktiviraj"
+                        ) : (
+                          "Aktiviraj"
+                        )}
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit2 className="h-4 w-4" />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCoupon(coupon.id)}
+                        disabled={processing === coupon.id}
+                        className="text-error hover:text-error"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
@@ -158,6 +305,12 @@ export function CouponTable() {
             </tbody>
           </table>
         </div>
+
+        {coupons.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            Nema kupona. Stvorite prvi kupon.
+          </div>
+        )}
       </Card>
 
       {/* Create coupon modal */}
@@ -172,9 +325,18 @@ export function CouponTable() {
             label="Kod kupona"
             value={newCoupon.code}
             onChange={(e) =>
-              setNewCoupon((prev) => ({ ...prev, code: e.target.value }))
+              setNewCoupon((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))
             }
             placeholder="SUMMER2024"
+          />
+
+          <Input
+            label="Opis (opcionalno)"
+            value={newCoupon.description}
+            onChange={(e) =>
+              setNewCoupon((prev) => ({ ...prev, description: e.target.value }))
+            }
+            placeholder="Ljetna promocija"
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -212,6 +374,19 @@ export function CouponTable() {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
+              label="Minimalna narudžba (€)"
+              type="number"
+              value={newCoupon.minimumOrder}
+              onChange={(e) =>
+                setNewCoupon((prev) => ({
+                  ...prev,
+                  minimumOrder: e.target.value,
+                }))
+              }
+              placeholder="50"
+              hint="Ostavite prazno ako nema minimuma"
+            />
+            <Input
               label="Limit korištenja"
               type="number"
               value={newCoupon.usageLimit}
@@ -224,25 +399,32 @@ export function CouponTable() {
               placeholder="100"
               hint="Ostavite prazno za neograničeno"
             />
-            <Input
-              label="Datum isteka"
-              type="date"
-              value={newCoupon.expiresAt}
-              onChange={(e) =>
-                setNewCoupon((prev) => ({
-                  ...prev,
-                  expiresAt: e.target.value,
-                }))
-              }
-            />
           </div>
+
+          <Input
+            label="Datum isteka"
+            type="date"
+            value={newCoupon.expiresAt}
+            onChange={(e) =>
+              setNewCoupon((prev) => ({
+                ...prev,
+                expiresAt: e.target.value,
+              }))
+            }
+          />
         </div>
 
         <ModalFooter>
           <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
             Odustani
           </Button>
-          <Button onClick={handleCreateCoupon} disabled={!newCoupon.code}>
+          <Button
+            onClick={handleCreateCoupon}
+            disabled={!newCoupon.code || !newCoupon.discountValue || processing === "create"}
+          >
+            {processing === "create" ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
             Stvori kupon
           </Button>
         </ModalFooter>

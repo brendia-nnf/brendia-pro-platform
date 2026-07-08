@@ -7,20 +7,37 @@ import { Award, Download, Share2 } from "lucide-react";
 interface CertificateDownloadProps {
   certificateNumber?: string;
   approvedAt?: Date;
+  downloadUrl?: string;
 }
 
 export function CertificateDownload({
   certificateNumber,
+  downloadUrl,
 }: CertificateDownloadProps) {
   const t = useTranslations("certification.certificate");
-  const tDemo = useTranslations("demo");
 
   const handleDownload = () => {
-    alert(tDemo("downloadNotAvailable"));
+    if (downloadUrl) {
+      window.open(downloadUrl, "_blank");
+    } else {
+      alert("Certificate download not yet available.");
+    }
   };
 
   const handleShare = () => {
-    alert(tDemo("shareNotAvailable"));
+    if (navigator.share && certificateNumber) {
+      navigator.share({
+        title: "Brendia Pro Certificate",
+        text: `I am now a certified Brendia Pro Artist! Certificate #${certificateNumber}`,
+        url: window.location.href,
+      }).catch(() => {
+        // User cancelled or error - do nothing
+      });
+    } else {
+      // Fallback: copy certificate URL to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      alert("Link copied to clipboard!");
+    }
   };
 
   return (

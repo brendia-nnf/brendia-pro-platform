@@ -1,7 +1,7 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { generateCertificatePDF } from "@/lib/certificates/generate";
 
 const updateCertificationSchema = z.object({
   action: z.enum(["approve", "reject", "review"]),
@@ -100,8 +100,16 @@ export async function PATCH(
       const { data: certNumber } = await adminClient.rpc("generate_certificate_number");
       updates.certificate_number = certNumber;
 
-      // TODO: Generate certificate PDF and upload to storage
-      // updates.certificate_url = await generateCertificatePDF(certification.user_id, certNumber);
+      // Generate certificate PDF and upload to storage
+      if (certNumber) {
+        const certificateUrl = await generateCertificatePDF(
+          certification.user_id,
+          certNumber
+        );
+        if (certificateUrl) {
+          updates.certificate_url = certificateUrl;
+        }
+      }
     }
 
     if (action === "reject") {

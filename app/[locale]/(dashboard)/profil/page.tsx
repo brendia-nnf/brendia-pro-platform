@@ -3,7 +3,7 @@
 import { Container, Card, CardHeader, CardTitle, Input, Button } from "@/components/ui";
 import { ProfileForm, DeviceManagement, PurchaseHistory } from "@/components/profile";
 import { useTranslations } from "next-intl";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 export default function ProfilePage() {
@@ -13,16 +13,66 @@ export default function ProfilePage() {
     new: "",
     confirm: "",
   });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
   const t = useTranslations("profile");
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPasswords((prev) => ({ ...prev, [name]: value }));
+    setPasswordError(null);
+    setPasswordSuccess(false);
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(t("password.demoDisabled"));
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    // Validate passwords match
+    if (passwords.new !== passwords.confirm) {
+      setPasswordError(t("password.mismatch"));
+      return;
+    }
+
+    // Validate password strength
+    if (passwords.new.length < 8) {
+      setPasswordError(t("password.tooShort"));
+      return;
+    }
+
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passwords.new)) {
+      setPasswordError(t("password.requirements"));
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwords.current,
+          newPassword: passwords.new,
+          confirmPassword: passwords.confirm,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to change password");
+      }
+
+      setPasswordSuccess(true);
+      setPasswords({ current: "", new: "", confirm: "" });
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   return (
@@ -45,6 +95,20 @@ export default function ProfilePage() {
           <CardHeader className="mb-6">
             <CardTitle>{t("password.title")}</CardTitle>
           </CardHeader>
+
+          {passwordSuccess && (
+            <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-lg flex items-center gap-2 text-success">
+              <CheckCircle className="h-5 w-5" />
+              <span>{t("password.success")}</span>
+            </div>
+          )}
+
+          {passwordError && (
+            <div className="mb-4 p-3 bg-error/10 border border-error/20 rounded-lg flex items-center gap-2 text-error">
+              <AlertCircle className="h-5 w-5" />
+              <span>{passwordError}</span>
+            </div>
+          )}
 
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <Input
@@ -88,8 +152,19 @@ export default function ProfilePage() {
               leftIcon={<Lock className="h-5 w-5" />}
             />
 
-            <Button type="submit" className="mt-2">
-              {t("password.changeButton")}
+            <Button
+              type="submit"
+              className="mt-2"
+              disabled={passwordLoading || !passwords.current || !passwords.new || !passwords.confirm}
+            >
+              {passwordLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {t("password.changing")}
+                </>
+              ) : (
+                t("password.changeButton")
+              )}
             </Button>
           </form>
         </Card>
