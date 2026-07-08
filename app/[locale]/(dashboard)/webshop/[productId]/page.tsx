@@ -1,17 +1,17 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Container, Card, Button } from "@/components/ui";
+import { Container, Card } from "@/components/ui";
 import {
   ProductGallery,
   ProductInfo,
   AddToCartButton,
   ProductGrid,
 } from "@/components/webshop";
-import { getProductById, mockProducts } from "@/lib/mock-data/products";
 import { ArrowLeft, Truck, Shield, RotateCcw } from "lucide-react";
+import type { Product } from "@/lib/types/webshop";
 
 interface ProductPageProps {
   params: Promise<{ productId: string }>;
@@ -19,16 +19,66 @@ interface ProductPageProps {
 
 export default function ProductPage({ params }: ProductPageProps) {
   const { productId } = use(params);
-  const product = getProductById(productId);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!product) {
+  useEffect(() => {
+    async function fetchProduct() {
+      try {
+        const response = await fetch(`/api/products/${productId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError("not_found");
+          } else {
+            setError("Failed to load product");
+          }
+          return;
+        }
+        const data = await response.json();
+        setProduct(data.product);
+
+        // Fetch related products
+        const relatedResponse = await fetch(`/api/products?category=${data.product.category}`);
+        if (relatedResponse.ok) {
+          const relatedData = await relatedResponse.json();
+          setRelatedProducts(
+            (relatedData.products || [])
+              .filter((p: Product) => p.id !== productId)
+              .slice(0, 4)
+          );
+        }
+      } catch (err) {
+        setError("Failed to load product");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProduct();
+  }, [productId]);
+
+  if (isLoading) {
+    return (
+      <Container size="xl">
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </Container>
+    );
+  }
+
+  if (error === "not_found" || !product) {
     notFound();
   }
 
-  // Get related products (same category, excluding current)
-  const relatedProducts = mockProducts
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  if (error) {
+    return (
+      <Container size="xl">
+        <div className="text-center py-12 text-red-500">{error}</div>
+      </Container>
+    );
+  }
 
   return (
     <Container size="xl">
