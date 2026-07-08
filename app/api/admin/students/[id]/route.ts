@@ -24,7 +24,7 @@ export async function GET(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -152,7 +152,7 @@ export async function PATCH(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
