@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       .from("enrollments")
       .select("amount_paid, purchased_at")
       .eq("status", "active")
-      .gte("purchased_at", startDate.toISOString());
+      .gte("purchased_at", startDate.toISOString()) as { data: Array<{ amount_paid: number; purchased_at: string }> | null };
 
     const totalRevenue = revenueData?.reduce((sum, e) => sum + e.amount_paid, 0) || 0;
 
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const { data: certStats } = await adminClient
       .from("certifications")
       .select("status")
-      .in("status", ["applied", "under_review", "approved"]);
+      .in("status", ["applied", "under_review", "approved"]) as { data: Array<{ status: string }> | null };
 
     const pendingCertifications = certStats?.filter(
       (c) => c.status === "applied" || c.status === "under_review"
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     // Get course completion rates
     const { data: progressData } = await adminClient
       .from("progress")
-      .select("user_id, completed");
+      .select("user_id, completed") as { data: Array<{ user_id: string; completed: boolean }> | null };
 
     const usersWithProgress = new Set(progressData?.map((p) => p.user_id) || []);
     const completedChapters = progressData?.filter((p) => p.completed).length || 0;
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const { data: webshopOrders } = await adminClient
       .from("webshop_orders")
       .select("total, status, created_at")
-      .gte("created_at", startDate.toISOString());
+      .gte("created_at", startDate.toISOString()) as { data: Array<{ total: number; status: string; created_at: string }> | null };
 
     const webshopRevenue = webshopOrders
       ?.filter((o) => o.status !== "cancelled" && o.status !== "refunded")
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     const { data: packageData } = await adminClient
       .from("enrollments")
       .select("package")
-      .eq("status", "active");
+      .eq("status", "active") as { data: Array<{ package: string }> | null };
 
     const packageBreakdown = {
       basic: packageData?.filter((e) => e.package === "basic").length || 0,
