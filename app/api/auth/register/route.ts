@@ -85,13 +85,15 @@ export async function POST(request: NextRequest) {
     if (phone) {
       await supabase
         .from("profiles")
-        .update({ phone, full_name: fullName })
+        .update({ phone, full_name: fullName } as never)
         .eq("id", data.user.id);
     }
 
     // Send verification email
+    // Note: User was created with email_confirm: false, so Supabase will handle verification
+    // We use invite type here to send the verification link
     await supabase.auth.admin.generateLink({
-      type: "signup",
+      type: "invite",
       email,
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/hr/prijava?verified=true`,

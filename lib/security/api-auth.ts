@@ -12,6 +12,10 @@ interface AuthResult {
   error?: string;
 }
 
+interface ProfileRow {
+  role: string;
+}
+
 /**
  * Verify API key (for mobile app or external integrations)
  */
@@ -69,7 +73,7 @@ export async function verifyBearerToken(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileRow | null };
 
     return {
       authenticated: true,

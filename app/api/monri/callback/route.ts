@@ -157,7 +157,7 @@ async function handleWebshopCallback(
 
   const { error: updateError } = await supabase
     .from("webshop_orders")
-    .update(updateData)
+    .update(updateData as never)
     .eq("id", order.id);
 
   if (updateError) {
@@ -208,7 +208,7 @@ async function handleEnrollmentCallback(
 
   const { error: updateError } = await supabase
     .from("enrollments")
-    .update(updateData)
+    .update(updateData as never)
     .eq("id", enrollment.id);
 
   if (updateError) {

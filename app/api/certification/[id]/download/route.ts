@@ -19,13 +19,20 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    interface CertificationRow {
+      id: string;
+      status: string;
+      certificate_url: string | null;
+      certificate_number: string | null;
+    }
+
     // Fetch certification
     const { data: certification, error: certError } = await supabase
       .from("certifications")
       .select("*")
       .eq("id", certificationId)
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: CertificationRow | null; error: unknown };
 
     if (certError || !certification) {
       return NextResponse.json(

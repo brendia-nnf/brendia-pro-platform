@@ -15,11 +15,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    interface ProgressRow {
+      level_number: number;
+      total_chapters: number;
+      completed_chapters: number;
+      progress_percentage: number;
+    }
+
+    interface LastWatchedRow {
+      chapter_id: string;
+      chapter_title: string;
+      level_number: number;
+      last_position: number;
+      watch_percentage: number;
+    }
+
     // Get progress by level using the database function
     const { data: progress, error: progressError } = await supabase.rpc(
       "get_user_progress",
-      { p_user_id: user.id }
-    );
+      { p_user_id: user.id } as never
+    ) as { data: ProgressRow[] | null; error: unknown };
 
     if (progressError) {
       console.error("Progress fetch error:", progressError);
@@ -32,22 +47,22 @@ export async function GET(request: NextRequest) {
     // Get last watched chapter
     const { data: lastWatched } = await supabase.rpc("get_last_watched", {
       p_user_id: user.id,
-    });
+    } as never) as { data: LastWatchedRow[] | null };
 
     // Calculate overall progress
     const totalChapters = progress?.reduce(
-      (sum: number, p: { total_chapters: number }) => sum + Number(p.total_chapters),
+      (sum, p) => sum + Number(p.total_chapters),
       0
     ) || 0;
     const completedChapters = progress?.reduce(
-      (sum: number, p: { completed_chapters: number }) => sum + Number(p.completed_chapters),
+      (sum, p) => sum + Number(p.completed_chapters),
       0
     ) || 0;
     const overallPercentage =
       totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
 
     return NextResponse.json({
-      byLevel: progress?.map((p: { level_number: number; total_chapters: number; completed_chapters: number; progress_percentage: number }) => ({
+      byLevel: progress?.map((p) => ({
         levelNumber: p.level_number,
         totalChapters: Number(p.total_chapters),
         completedChapters: Number(p.completed_chapters),

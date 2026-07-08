@@ -15,15 +15,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    interface EnrollmentRow {
+      id: string;
+      course_id: string;
+      amount_paid: number;
+      currency: string;
+      status: string;
+      purchased_at: string;
+    }
+
     // Fetch course enrollments
     const { data: enrollments, error: enrollmentsError } = await supabase
       .from("enrollments")
       .select("*")
       .eq("user_id", user.id)
-      .order("purchased_at", { ascending: false });
+      .order("purchased_at", { ascending: false }) as { data: EnrollmentRow[] | null; error: unknown };
 
     if (enrollmentsError) {
       console.error("Fetch enrollments error:", enrollmentsError);
+    }
+
+    interface OrderRow {
+      id: string;
+      order_number: string;
+      total: number;
+      currency: string;
+      status: string;
+      created_at: string;
     }
 
     // Fetch webshop orders
@@ -31,7 +49,7 @@ export async function GET(request: NextRequest) {
       .from("webshop_orders")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as { data: OrderRow[] | null; error: unknown };
 
     if (ordersError) {
       console.error("Fetch orders error:", ordersError);

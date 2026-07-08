@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -172,11 +172,11 @@ export async function POST(request: NextRequest) {
         starts_at: data.startsAt || new Date().toISOString(),
         expires_at: data.expiresAt,
         is_active: data.isActive,
-      } as Coupon)
+      } as never)
       .select()
       .single() as { data: Coupon | null; error: unknown };
 
-    if (error) {
+    if (error || !coupon) {
       console.error("Create coupon error:", error);
       return NextResponse.json(
         { error: "Failed to create coupon" },

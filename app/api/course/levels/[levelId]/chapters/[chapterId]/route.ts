@@ -14,6 +14,26 @@ export async function GET(
       data: { user },
     } = await supabase.auth.getUser();
 
+    interface ChapterRow {
+      id: string;
+      level_id: string;
+      chapter_number: number;
+      title: string;
+      title_en: string | null;
+      description: string | null;
+      description_en: string | null;
+      video_url: string | null;
+      video_duration: number | null;
+      video_thumbnail_url: string | null;
+      is_preview: boolean;
+      level: {
+        id: string;
+        level_number: number;
+        title: string;
+        required_package: string;
+      } | null;
+    }
+
     // Fetch chapter with level info
     const { data: chapter, error: chapterError } = await supabase
       .from("chapters")
@@ -31,7 +51,7 @@ export async function GET(
       .eq("id", chapterId)
       .eq("level_id", levelId)
       .eq("is_published", true)
-      .single();
+      .single() as { data: ChapterRow | null; error: unknown };
 
     if (chapterError || !chapter) {
       return NextResponse.json(
@@ -46,6 +66,11 @@ export async function GET(
     let progress = null;
 
     if (user && !hasAccess) {
+      interface EnrollmentRow {
+        package: string;
+        status: string;
+      }
+
       // Check enrollment
       const { data: enrollmentData } = await supabase
         .from("enrollments")
@@ -54,7 +79,7 @@ export async function GET(
         .eq("status", "active")
         .order("purchased_at", { ascending: false })
         .limit(1)
-        .single();
+        .single() as { data: EnrollmentRow | null };
 
       enrollment = enrollmentData;
 
@@ -67,13 +92,20 @@ export async function GET(
         }
       }
 
+      interface ProgressRow {
+        watch_percentage: number;
+        completed: boolean;
+        last_position: number;
+        watch_time: number;
+      }
+
       // Fetch progress
       const { data: progressData } = await supabase
         .from("progress")
         .select("*")
         .eq("user_id", user.id)
         .eq("chapter_id", chapterId)
-        .single();
+        .single() as { data: ProgressRow | null };
 
       progress = progressData;
     }
@@ -120,13 +152,19 @@ export async function GET(
       };
     }
 
+    interface AdjacentChapterRow {
+      id: string;
+      chapter_number: number;
+      title: string;
+    }
+
     // Fetch next/previous chapters for navigation
     const { data: adjacentChapters } = await supabase
       .from("chapters")
       .select("id, chapter_number, title")
       .eq("level_id", levelId)
       .eq("is_published", true)
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true }) as { data: AdjacentChapterRow[] | null };
 
     if (adjacentChapters) {
       const currentIndex = adjacentChapters.findIndex((c) => c.id === chapterId);

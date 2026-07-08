@@ -61,7 +61,25 @@ export async function GET(request: NextRequest) {
     const to = from + limit - 1;
     query = query.range(from, to);
 
-    const { data: certifications, error: queryError, count } = await query;
+    interface CertificationRow {
+      id: string;
+      user_id: string;
+      status: string;
+      applied_at: string | null;
+      reviewed_at: string | null;
+      approved_at: string | null;
+      rejection_reason: string | null;
+      certificate_number: string | null;
+      level1_completed_at: string | null;
+      level2_completed_at: string | null;
+      profile: { full_name: string | null; phone: string | null } | null;
+    }
+
+    const { data: certifications, error: queryError, count } = await query as {
+      data: CertificationRow[] | null;
+      error: unknown;
+      count: number | null;
+    };
 
     if (queryError) {
       console.error("Certifications query error:", queryError);

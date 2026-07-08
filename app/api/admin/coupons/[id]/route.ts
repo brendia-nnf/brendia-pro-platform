@@ -37,7 +37,7 @@ export async function PATCH(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -72,14 +72,24 @@ export async function PATCH(
 
     updates.updated_at = new Date().toISOString();
 
+    interface CouponRow {
+      id: string;
+      code: string;
+      discount_type: string;
+      discount_value: number;
+      is_active: boolean;
+      usage_count: number;
+      usage_limit: number | null;
+    }
+
     const { data: coupon, error } = await adminClient
       .from("coupons")
-      .update(updates)
+      .update(updates as never)
       .eq("id", couponId)
       .select()
-      .single();
+      .single() as { data: CouponRow | null; error: unknown };
 
-    if (error) {
+    if (error || !coupon) {
       console.error("Update coupon error:", error);
       return NextResponse.json(
         { error: "Failed to update coupon" },
@@ -130,7 +140,7 @@ export async function DELETE(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -143,13 +153,13 @@ export async function DELETE(
       .from("coupons")
       .select("usage_count")
       .eq("id", couponId)
-      .single();
+      .single() as { data: { usage_count: number } | null };
 
     if (coupon && coupon.usage_count > 0) {
       // Soft delete - just deactivate
       await adminClient
         .from("coupons")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .update({ is_active: false, updated_at: new Date().toISOString() } as never)
         .eq("id", couponId);
 
       return NextResponse.json({

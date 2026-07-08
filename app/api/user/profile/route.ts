@@ -16,13 +16,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    interface ProfileRow {
+      full_name: string | null;
+      phone: string | null;
+      avatar_url: string | null;
+      role: string;
+      created_at: string;
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileRow | null; error: unknown };
 
-    if (profileError) {
+    if (profileError || !profile) {
       return NextResponse.json(
         { error: "Profile not found" },
         { status: 404 }
@@ -89,14 +97,21 @@ export async function PATCH(request: NextRequest) {
       updates.avatar_url = validation.data.avatarUrl;
     }
 
+    interface UpdatedProfileRow {
+      full_name: string | null;
+      phone: string | null;
+      avatar_url: string | null;
+      role: string;
+    }
+
     const { data: profile, error: updateError } = await supabase
       .from("profiles")
-      .update(updates)
+      .update(updates as never)
       .eq("id", user.id)
       .select()
-      .single();
+      .single() as { data: UpdatedProfileRow | null; error: unknown };
 
-    if (updateError) {
+    if (updateError || !profile) {
       return NextResponse.json(
         { error: "Failed to update profile" },
         { status: 500 }

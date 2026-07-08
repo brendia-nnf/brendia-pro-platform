@@ -16,12 +16,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    interface CertificationRow {
+      id: string;
+      status: string;
+    }
+
     // Get current certification status
     const { data: certification, error: certError } = await supabase
       .from("certifications")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: CertificationRow | null; error: { code?: string; message?: string } | null };
 
     if (certError && certError.code !== "PGRST116") {
       console.error("Certification fetch error:", certError);
@@ -51,14 +56,14 @@ export async function POST(request: NextRequest) {
         // Update eligibility first
         await supabase.rpc("update_certification_eligibility", {
           p_user_id: user.id,
-        });
+        } as never);
 
         // Refetch
         const { data: updatedCert } = await supabase
           .from("certifications")
           .select("status")
           .eq("user_id", user.id)
-          .single();
+          .single() as { data: { status: string } | null };
 
         if (updatedCert?.status === "not_eligible") {
           return NextResponse.json(
@@ -69,6 +74,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    interface CertificationResult {
+      id: string;
+      status: string;
+      applied_at: string;
+    }
+
     // Update certification to applied status using admin client
     const { data: updatedCert, error: updateError } = await adminClient
       .from("certifications")
@@ -77,13 +88,13 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           status: "applied",
           applied_at: new Date().toISOString(),
-        },
+        } as never,
         { onConflict: "user_id" }
       )
       .select()
-      .single();
+      .single() as { data: CertificationResult | null; error: unknown };
 
-    if (updateError) {
+    if (updateError || !updatedCert) {
       console.error("Certification update error:", updateError);
       return NextResponse.json(
         { error: "Failed to submit application" },

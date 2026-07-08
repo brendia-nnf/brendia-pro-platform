@@ -27,7 +27,25 @@ export async function GET(request: NextRequest) {
 
     query = query.limit(limit);
 
-    const { data: products, error } = await query;
+    interface ProductRow {
+      id: string;
+      name: string;
+      name_en: string | null;
+      slug: string;
+      description: string | null;
+      description_en: string | null;
+      price: number;
+      original_price: number | null;
+      currency: string;
+      category: string;
+      images: string[];
+      in_stock: boolean;
+      stock_quantity: number;
+      specifications: Record<string, unknown>;
+      featured: boolean;
+    }
+
+    const { data: products, error } = await query as { data: ProductRow[] | null; error: unknown };
 
     if (error) {
       console.error("Products fetch error:", error);
@@ -84,7 +102,7 @@ export async function POST(request: NextRequest) {
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -131,6 +149,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    interface ProductResult {
+      id: string;
+      name: string;
+      slug: string;
+    }
+
     // Insert product
     const { data: product, error } = await adminClient
       .from("products")
@@ -149,11 +173,11 @@ export async function POST(request: NextRequest) {
         specifications: specifications || {},
         featured: featured ?? false,
         is_published: true,
-      })
+      } as never)
       .select()
-      .single();
+      .single() as { data: ProductResult | null; error: unknown };
 
-    if (error) {
+    if (error || !product) {
       console.error("Product creation error:", error);
       return NextResponse.json(
         { error: "Failed to create product" },

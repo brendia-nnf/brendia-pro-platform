@@ -17,12 +17,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    interface ProfileRow {
+      full_name: string | null;
+      phone: string | null;
+      role: string;
+      avatar_url: string | null;
+    }
+
     // Fetch profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .single() as { data: ProfileRow | null };
+
+    interface EnrollmentRow {
+      course_id: string;
+      package: string;
+      status: string;
+      purchased_at: string;
+      expires_at: string | null;
+    }
 
     // Fetch active enrollment
     const { data: enrollment } = await supabase
@@ -32,12 +47,17 @@ export async function GET(request: NextRequest) {
       .eq("status", "active")
       .order("purchased_at", { ascending: false })
       .limit(1)
-      .single();
+      .single() as { data: EnrollmentRow | null };
+
+    interface ProgressRow {
+      level_number: number;
+      progress_percentage: number;
+    }
 
     // Fetch progress
     const { data: progress } = await supabase.rpc("get_user_progress", {
       p_user_id: user.id,
-    });
+    } as never) as { data: ProgressRow[] | null };
 
     // Determine current level
     let currentLevel = 1;
@@ -54,7 +74,7 @@ export async function GET(request: NextRequest) {
       .from("certifications")
       .select("status")
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: { status: string } | null };
 
     return NextResponse.json({
       user: {

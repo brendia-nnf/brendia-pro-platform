@@ -30,7 +30,7 @@ export async function PATCH(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -65,14 +65,23 @@ export async function PATCH(
       updates.delivered_at = new Date().toISOString();
     }
 
+    interface OrderUpdateResult {
+      id: string;
+      order_number: string;
+      status: string;
+      tracking_number: string | null;
+      shipped_at: string | null;
+      delivered_at: string | null;
+    }
+
     const { data: order, error } = await adminClient
       .from("webshop_orders")
-      .update(updates)
+      .update(updates as never)
       .eq("id", orderId)
       .select()
-      .single();
+      .single() as { data: OrderUpdateResult | null; error: unknown };
 
-    if (error) {
+    if (error || !order) {
       console.error("Update order error:", error);
       return NextResponse.json(
         { error: "Failed to update order" },
@@ -122,7 +131,7 @@ export async function GET(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -130,11 +139,40 @@ export async function GET(
 
     const adminClient = createAdminClient();
 
+    interface WebshopOrderRow {
+      id: string;
+      order_number: string;
+      customer_name: string;
+      customer_email: string;
+      customer_phone: string | null;
+      shipping_full_name: string;
+      shipping_street: string;
+      shipping_city: string;
+      shipping_postal_code: string;
+      shipping_country: string;
+      shipping_phone: string | null;
+      items: unknown;
+      subtotal: number;
+      shipping: number;
+      discount: number;
+      total: number;
+      currency: string;
+      coupon_code: string | null;
+      status: string;
+      tracking_number: string | null;
+      customer_notes: string | null;
+      admin_notes: string | null;
+      created_at: string;
+      paid_at: string | null;
+      shipped_at: string | null;
+      delivered_at: string | null;
+    }
+
     const { data: order, error } = await adminClient
       .from("webshop_orders")
       .select("*")
       .eq("id", orderId)
-      .single();
+      .single() as { data: WebshopOrderRow | null; error: unknown };
 
     if (error || !order) {
       return NextResponse.json(

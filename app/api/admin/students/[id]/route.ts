@@ -32,12 +32,21 @@ export async function GET(
 
     const adminClient = createAdminClient();
 
+    interface StudentProfileRow {
+      id: string;
+      full_name: string | null;
+      phone: string | null;
+      avatar_url: string | null;
+      created_at: string;
+      role: string;
+    }
+
     // Fetch student profile
     const { data: studentProfile, error: profileError } = await adminClient
       .from("profiles")
       .select("*")
       .eq("id", studentId)
-      .single();
+      .single() as { data: StudentProfileRow | null; error: unknown };
 
     if (profileError || !studentProfile) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
@@ -46,31 +55,67 @@ export async function GET(
     // Fetch auth user for email
     const { data: authUser } = await adminClient.auth.admin.getUserById(studentId);
 
+    interface EnrollmentRow {
+      id: string;
+      course_id: string;
+      package: string;
+      status: string;
+      amount_paid: number;
+      currency: string;
+      purchased_at: string;
+      expires_at: string | null;
+    }
+
     // Fetch enrollments
     const { data: enrollments } = await adminClient
       .from("enrollments")
       .select("*")
       .eq("user_id", studentId)
-      .order("purchased_at", { ascending: false });
+      .order("purchased_at", { ascending: false }) as { data: EnrollmentRow[] | null };
+
+    interface ProgressRow {
+      level_number: number;
+      total_chapters: number;
+      completed_chapters: number;
+      progress_percentage: number;
+    }
 
     // Fetch progress
     const { data: progress } = await adminClient.rpc("get_user_progress", {
       p_user_id: studentId,
-    });
+    } as never) as { data: ProgressRow[] | null };
+
+    interface CertificationRow {
+      id: string;
+      status: string;
+      applied_at: string | null;
+      approved_at: string | null;
+      certificate_number: string | null;
+    }
 
     // Fetch certification
     const { data: certification } = await adminClient
       .from("certifications")
       .select("*")
       .eq("user_id", studentId)
-      .single();
+      .single() as { data: CertificationRow | null };
+
+    interface DeviceRow {
+      id: string;
+      device_name: string | null;
+      device_type: string | null;
+      browser: string | null;
+      os: string | null;
+      is_current: boolean;
+      last_active: string;
+    }
 
     // Fetch devices
     const { data: devices } = await adminClient
       .from("devices")
       .select("*")
       .eq("user_id", studentId)
-      .order("last_active", { ascending: false });
+      .order("last_active", { ascending: false }) as { data: DeviceRow[] | null };
 
     return NextResponse.json({
       id: studentId,
@@ -90,7 +135,7 @@ export async function GET(
         purchasedAt: e.purchased_at,
         expiresAt: e.expires_at,
       })),
-      progress: progress?.map((p: { level_number: number; total_chapters: number; completed_chapters: number; progress_percentage: number }) => ({
+      progress: progress?.map((p) => ({
         levelNumber: p.level_number,
         totalChapters: Number(p.total_chapters),
         completedChapters: Number(p.completed_chapters),
@@ -178,7 +223,7 @@ export async function PATCH(
 
       await adminClient
         .from("profiles")
-        .update(updates)
+        .update(updates as never)
         .eq("id", studentId);
     }
 
@@ -186,7 +231,7 @@ export async function PATCH(
     if (validation.data.enrollmentStatus) {
       await adminClient
         .from("enrollments")
-        .update({ status: validation.data.enrollmentStatus })
+        .update({ status: validation.data.enrollmentStatus } as never)
         .eq("user_id", studentId)
         .order("purchased_at", { ascending: false })
         .limit(1);

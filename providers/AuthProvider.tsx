@@ -55,6 +55,24 @@ interface AuthContextValue extends AuthState {
   refreshUser: () => Promise<void>;
 }
 
+interface ProgressRow {
+  level_number: number;
+  progress_percentage: number;
+}
+
+interface ProfileRow {
+  full_name: string | null;
+  phone: string | null;
+  role: string;
+  avatar_url: string | null;
+}
+
+interface EnrollmentRow {
+  purchased_at: string;
+  package: string;
+  status: string;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuth() {
@@ -87,7 +105,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .from("profiles")
           .select("*")
           .eq("id", supabaseUser.id)
-          .single();
+          .single() as { data: ProfileRow | null };
 
         // Fetch enrollment to get package info
         const { data: enrollment } = await supabase
@@ -97,12 +115,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .eq("status", "active")
           .order("purchased_at", { ascending: false })
           .limit(1)
-          .single();
+          .single() as { data: EnrollmentRow | null };
 
         // Fetch progress to determine current level
         const { data: progress } = await supabase.rpc("get_user_progress", {
           p_user_id: supabaseUser.id,
-        });
+        } as never) as { data: ProgressRow[] | null };
 
         // Determine current level based on progress
         let currentLevel: 1 | 2 | 3 = 1;
@@ -123,7 +141,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           purchaseDate: enrollment?.purchased_at
             ? new Date(enrollment.purchased_at)
             : new Date(),
-          purchasePackage: enrollment?.package || "basic",
+          purchasePackage: (enrollment?.package as "basic" | "advanced") || "basic",
           subscriptionStatus: enrollment?.status === "active" ? "active" : "expired",
           currentLevel,
           role: (profile?.role as "user" | "admin") || "user",
@@ -238,7 +256,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             p_browser: getBrowser(userAgent),
             p_os: getOS(userAgent),
             p_user_agent: userAgent,
-          });
+          } as never);
         } catch (deviceError) {
           console.error("Error registering device:", deviceError);
         }
@@ -278,7 +296,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (data.phone) {
           await supabase
             .from("profiles")
-            .update({ phone: data.phone })
+            .update({ phone: data.phone } as never)
             .eq("id", authData.user.id);
         }
 
@@ -324,7 +342,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (Object.keys(profileUpdates).length > 0) {
         const { error } = await supabase
           .from("profiles")
-          .update(profileUpdates)
+          .update(profileUpdates as never)
           .eq("id", state.user.id);
 
         if (error) throw error;

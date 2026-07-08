@@ -263,7 +263,7 @@ export function CouponTable() {
                     {coupon.usageLimit && ` / ${coupon.usageLimit}`}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600">
-                    {coupon.expiresAt ? formatDate(coupon.expiresAt) : "Nikad"}
+                    {coupon.expiresAt ? formatDate(new Date(coupon.expiresAt)) : "Nikad"}
                   </td>
                   <td className="py-3 px-4 text-center">
                     <Badge

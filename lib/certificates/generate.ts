@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/server";
 
+interface ProfileRow {
+  full_name: string | null;
+}
+
 interface CertificateData {
   certificateNumber: string;
   recipientName: string;
@@ -26,7 +30,7 @@ export async function generateCertificatePDF(
     .from("profiles")
     .select("full_name")
     .eq("id", userId)
-    .single();
+    .single() as { data: ProfileRow | null };
 
   if (!profile) {
     console.error("Profile not found for user:", userId);
@@ -36,7 +40,7 @@ export async function generateCertificatePDF(
   // Generate certificate HTML content
   const certificateHtml = generateCertificateHTML({
     certificateNumber,
-    recipientName: profile.full_name,
+    recipientName: profile.full_name || "Unknown",
     courseTitle: "Brendia Pro Artist",
     completionDate: new Date(),
     approvedAt: new Date(),

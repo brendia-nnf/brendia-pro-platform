@@ -23,12 +23,25 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
 
+  interface OrderRow {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    course_id: string;
+    course_name: string;
+    order_number: string;
+    enrollment_token_expires_at: string | null;
+    enrollment_completed_at: string | null;
+    status: string;
+  }
+
   // Find order by enrollment token
   const { data: order, error } = await supabase
     .from("orders")
     .select("id, email, first_name, last_name, course_id, course_name, order_number, enrollment_token_expires_at, enrollment_completed_at, status")
     .eq("enrollment_token", token)
-    .single();
+    .single() as { data: OrderRow | null; error: unknown };
 
   if (error || !order) {
     return NextResponse.json(
@@ -96,12 +109,31 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
+    interface FullOrderRow {
+      id: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+      course_id: string;
+      course_name: string;
+      order_number: string;
+      enrollment_token_expires_at: string | null;
+      enrollment_completed_at: string | null;
+      status: string;
+      amount: number;
+      currency: string;
+      paid_at: string | null;
+      monri_transaction_id: string | null;
+      monri_approval_code: string | null;
+      monri_response_code: string | null;
+    }
+
     // Find order by enrollment token
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select("*")
       .eq("enrollment_token", token)
-      .single();
+      .single() as { data: FullOrderRow | null; error: unknown };
 
     if (orderError || !order) {
       return NextResponse.json(
@@ -201,7 +233,7 @@ export async function POST(request: NextRequest) {
       monri_response_code: order.monri_response_code,
       purchased_at: order.paid_at || new Date().toISOString(),
       expires_at: null, // Lifetime access
-    });
+    } as never);
 
     if (enrollmentError) {
       console.error("Failed to create enrollment:", enrollmentError);
@@ -214,7 +246,7 @@ export async function POST(request: NextRequest) {
       .update({
         enrollment_completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
+      } as never)
       .eq("id", order.id);
 
     console.log(`Account activated for ${order.email}, user ID: ${userId}`);

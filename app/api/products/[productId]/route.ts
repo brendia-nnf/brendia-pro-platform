@@ -10,11 +10,30 @@ export async function GET(
     const { productId } = await params;
     const supabase = createAdminClient();
 
+    interface ProductRow {
+      id: string;
+      name: string;
+      name_en: string | null;
+      slug: string;
+      description: string | null;
+      description_en: string | null;
+      price: number;
+      original_price: number | null;
+      currency: string;
+      category: string;
+      images: string[];
+      in_stock: boolean;
+      stock_quantity: number;
+      specifications: Record<string, unknown>;
+      featured: boolean;
+      is_published: boolean;
+    }
+
     const { data: product, error } = await supabase
       .from("products")
       .select("*")
       .eq("id", productId)
-      .single();
+      .single() as { data: ProductRow | null; error: unknown };
 
     if (error || !product) {
       return NextResponse.json(
@@ -74,7 +93,7 @@ export async function PUT(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -105,7 +124,7 @@ export async function PUT(
 
     const { error } = await adminClient
       .from("products")
-      .update(updateData)
+      .update(updateData as never)
       .eq("id", productId);
 
     if (error) {
@@ -148,7 +167,7 @@ export async function DELETE(
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { role: string } | null };
 
     if (profile?.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

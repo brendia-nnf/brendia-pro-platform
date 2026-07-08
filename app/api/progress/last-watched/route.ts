@@ -15,11 +15,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    interface LastWatchedRow {
+      chapter_id: string;
+      last_position: number;
+      watch_percentage: number;
+    }
+
+    interface ChapterRow {
+      id: string;
+      chapter_number: number;
+      title: string;
+      title_en: string | null;
+      video_duration: number;
+      video_thumbnail_url: string | null;
+      level: {
+        id: string;
+        level_number: number;
+        title: string;
+      } | null;
+    }
+
     // Get last watched using the database function
     const { data: lastWatched, error: queryError } = await supabase.rpc(
       "get_last_watched",
-      { p_user_id: user.id }
-    );
+      { p_user_id: user.id } as never
+    ) as { data: LastWatchedRow[] | null; error: unknown };
 
     if (queryError) {
       console.error("Last watched query error:", queryError);
@@ -52,7 +72,7 @@ export async function GET(request: NextRequest) {
         .order("level_id", { ascending: true })
         .order("sort_order", { ascending: true })
         .limit(1)
-        .single();
+        .single() as { data: ChapterRow | null };
 
       if (firstChapter) {
         return NextResponse.json({
@@ -93,7 +113,7 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq("id", lastWatched[0].chapter_id)
-      .single();
+      .single() as { data: ChapterRow | null };
 
     if (!chapter) {
       return NextResponse.json(

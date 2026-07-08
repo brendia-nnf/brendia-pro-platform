@@ -60,12 +60,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    interface ProfileRow {
+      id: string;
+      full_name: string | null;
+      phone: string | null;
+      role: string;
+      avatar_url: string | null;
+    }
+
     // Fetch profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", data.user.id)
-      .single();
+      .single() as { data: ProfileRow | null };
+
+    interface EnrollmentRow {
+      package: string;
+      status: string;
+    }
 
     // Fetch active enrollment
     const { data: enrollment } = await supabase
@@ -75,7 +88,7 @@ export async function POST(request: NextRequest) {
       .eq("status", "active")
       .order("purchased_at", { ascending: false })
       .limit(1)
-      .single();
+      .single() as { data: EnrollmentRow | null };
 
     return NextResponse.json({
       user: {

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
           p_code: couponCode.toUpperCase(),
           p_order_subtotal: formatAmountForMonri(subtotal),
           p_user_id: null, // Guest checkout
-        });
+        } as never) as { data: Array<{ valid: boolean; discount_amount: number; coupon_id: string }> | null; error: unknown };
 
       if (couponError) {
         console.error("Coupon validation error:", couponError);
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       status: "pending",
       // Notes
       customer_notes: customerNotes || null,
-    });
+    } as never);
 
     if (dbError) {
       console.error("Database error:", dbError);

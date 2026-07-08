@@ -15,26 +15,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    type CertificationData = Parameters<typeof formatCertification>[0];
+
     // Fetch certification
     const { data: certification, error: certError } = await supabase
       .from("certifications")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .single() as { data: CertificationData | null; error: { code?: string } | null };
 
     // If no certification record exists, check eligibility and create one
     if (certError && certError.code === "PGRST116") {
       // Update eligibility (this will create a record)
       await supabase.rpc("update_certification_eligibility", {
         p_user_id: user.id,
-      });
+      } as never);
 
       // Fetch again
       const { data: newCert } = await supabase
         .from("certifications")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .single() as { data: CertificationData | null };
 
       if (newCert) {
         return NextResponse.json(formatCertification(newCert));
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (certError) {
+    if (certError || !certification) {
       console.error("Certification fetch error:", certError);
       return NextResponse.json(
         { error: "Failed to fetch certification" },

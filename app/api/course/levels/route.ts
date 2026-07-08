@@ -11,6 +11,29 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    interface LevelRow {
+      id: string;
+      level_number: number;
+      title: string;
+      title_en: string | null;
+      description: string | null;
+      description_en: string | null;
+      required_package: string;
+      required_level: number;
+      chapters: Array<{
+        id: string;
+        chapter_number: number;
+        title: string;
+        title_en: string | null;
+        description: string | null;
+        description_en: string | null;
+        video_duration: number;
+        video_thumbnail_url: string | null;
+        is_preview: boolean;
+        sort_order: number;
+      }> | null;
+    }
+
     // Fetch all published levels with chapters
     const { data: levels, error: levelsError } = await supabase
       .from("levels")
@@ -32,9 +55,9 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq("is_published", true)
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true }) as { data: LevelRow[] | null; error: unknown };
 
-    if (levelsError) {
+    if (levelsError || !levels) {
       console.error("Fetch levels error:", levelsError);
       return NextResponse.json(
         { error: "Failed to fetch levels" },
@@ -47,6 +70,11 @@ export async function GET(request: NextRequest) {
     let userProgress: Record<string, { watchPercentage: number; completed: boolean }> = {};
 
     if (user) {
+      interface EnrollmentRow {
+        package: string;
+        status: string;
+      }
+
       // Fetch enrollment
       const { data: enrollmentData } = await supabase
         .from("enrollments")
@@ -55,15 +83,21 @@ export async function GET(request: NextRequest) {
         .eq("status", "active")
         .order("purchased_at", { ascending: false })
         .limit(1)
-        .single();
+        .single() as { data: EnrollmentRow | null };
 
       enrollment = enrollmentData;
+
+      interface ProgressRow {
+        chapter_id: string;
+        watch_percentage: number;
+        completed: boolean;
+      }
 
       // Fetch progress
       const { data: progressData } = await supabase
         .from("progress")
         .select("chapter_id, watch_percentage, completed")
-        .eq("user_id", user.id);
+        .eq("user_id", user.id) as { data: ProgressRow[] | null };
 
       if (progressData) {
         userProgress = progressData.reduce(

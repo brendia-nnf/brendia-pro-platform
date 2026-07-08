@@ -73,7 +73,30 @@ export async function GET(request: NextRequest) {
     const to = from + limit - 1;
     query = query.range(from, to);
 
-    const { data: profiles, error: queryError, count } = await query;
+    interface ProfileRow {
+      id: string;
+      full_name: string | null;
+      phone: string | null;
+      role: string;
+      created_at: string;
+      enrollments: Array<{
+        id: string;
+        course_id: string;
+        package: string;
+        status: string;
+        purchased_at: string;
+        expires_at: string | null;
+      }> | null;
+      certifications: Array<{
+        status: string;
+      }> | null;
+    }
+
+    const { data: profiles, error: queryError, count } = await query as {
+      data: ProfileRow[] | null;
+      error: unknown;
+      count: number | null;
+    };
 
     if (queryError) {
       console.error("Students query error:", queryError);

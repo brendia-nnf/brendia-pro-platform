@@ -250,7 +250,7 @@ export function OrdersTable() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-600">
-                      {formatDate(order.createdAt)}
+                      {formatDate(new Date(order.createdAt))}
                     </td>
                     <td className="py-3 px-4 text-sm font-medium text-primary text-right">
                       {formatPrice(order.total)}
@@ -335,7 +335,7 @@ export function OrdersTable() {
                 </span>
               </Badge>
               <span className="text-sm text-gray-500">
-                {formatDate(selectedOrder.createdAt)}
+                {formatDate(new Date(selectedOrder.createdAt))}
               </span>
             </div>
 

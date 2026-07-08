@@ -39,6 +39,14 @@ export async function POST(
 
     const { watchPercentage, lastPosition, watchTime } = validation.data;
 
+    interface ChapterRow {
+      id: string;
+      level: {
+        level_number: number;
+        required_package: string;
+      } | null;
+    }
+
     // Verify chapter exists and user has access
     const { data: chapter } = await supabase
       .from("chapters")
@@ -52,13 +60,18 @@ export async function POST(
       `
       )
       .eq("id", chapterId)
-      .single();
+      .single() as { data: ChapterRow | null };
 
     if (!chapter) {
       return NextResponse.json(
         { error: "Chapter not found" },
         { status: 404 }
       );
+    }
+
+    interface EnrollmentRow {
+      package: string;
+      status: string;
     }
 
     // Check enrollment
@@ -68,7 +81,7 @@ export async function POST(
       .eq("user_id", user.id)
       .eq("status", "active")
       .limit(1)
-      .single();
+      .single() as { data: EnrollmentRow | null };
 
     if (!enrollment) {
       return NextResponse.json(
@@ -86,6 +99,13 @@ export async function POST(
       );
     }
 
+    interface ProgressRow {
+      watch_percentage: number;
+      completed: boolean;
+      last_position: number;
+      watch_time: number;
+    }
+
     // Upsert progress
     const { data: progress, error: upsertError } = await supabase
       .from("progress")
@@ -97,15 +117,15 @@ export async function POST(
           last_position: lastPosition,
           watch_time: watchTime || 0,
           updated_at: new Date().toISOString(),
-        },
+        } as never,
         {
           onConflict: "user_id,chapter_id",
         }
       )
       .select()
-      .single();
+      .single() as { data: ProgressRow | null; error: unknown };
 
-    if (upsertError) {
+    if (upsertError || !progress) {
       console.error("Progress upsert error:", upsertError);
       return NextResponse.json(
         { error: "Failed to update progress" },

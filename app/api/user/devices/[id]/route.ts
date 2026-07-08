@@ -19,12 +19,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    interface DeviceRow {
+      id: string;
+      user_id: string;
+      is_current: boolean;
+    }
+
     // Verify device belongs to user
     const { data: device } = await supabase
       .from("devices")
       .select("id, user_id, is_current")
       .eq("id", deviceId)
-      .single();
+      .single() as { data: DeviceRow | null };
 
     if (!device || device.user_id !== user.id) {
       return NextResponse.json(

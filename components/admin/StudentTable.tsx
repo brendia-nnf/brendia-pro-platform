@@ -199,7 +199,7 @@ export function StudentTable() {
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-600">
                     {student.enrollment
-                      ? formatDate(student.enrollment.purchasedAt)
+                      ? formatDate(new Date(student.enrollment.purchasedAt))
                       : "-"}
                   </td>
                   <td className="py-3 px-4">

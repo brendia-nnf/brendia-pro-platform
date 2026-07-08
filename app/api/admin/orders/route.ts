@@ -63,8 +63,19 @@ export async function GET(request: NextRequest) {
         enrollmentQuery = enrollmentQuery.eq("status", status);
       }
 
+      interface EnrollmentRow {
+        id: string;
+        user_id: string;
+        course_id: string;
+        package: string;
+        status: string;
+        amount_paid: number;
+        currency: string;
+        purchased_at: string;
+      }
+
       const { data: enrollments, count: enrollmentCount } = await enrollmentQuery
-        .range(from, to);
+        .range(from, to) as { data: EnrollmentRow[] | null; count: number | null };
 
       // Get user info for enrollments
       if (enrollments && enrollments.length > 0) {
@@ -118,8 +129,20 @@ export async function GET(request: NextRequest) {
         webshopQuery = webshopQuery.eq("status", status);
       }
 
+      interface WebshopOrderRow {
+        id: string;
+        order_number: string;
+        customer_name: string;
+        customer_email: string;
+        total: number;
+        currency: string;
+        status: string;
+        created_at: string;
+        items: unknown;
+      }
+
       const { data: webshopOrders, count: webshopCount } = await webshopQuery
-        .range(from, to);
+        .range(from, to) as { data: WebshopOrderRow[] | null; count: number | null };
 
       if (webshopOrders) {
         webshopOrders.forEach((o) => {

@@ -125,12 +125,21 @@ export async function PATCH(
     // Update certification
     const { data: updated, error: updateError } = await adminClient
       .from("certifications")
-      .update(updates)
+      .update(updates as never)
       .eq("id", certificationId)
       .select()
-      .single();
+      .single() as {
+        data: {
+          id: string;
+          status: string;
+          certificate_number: string | null;
+          approved_at: string | null;
+          rejection_reason: string | null;
+        } | null;
+        error: unknown
+      };
 
-    if (updateError) {
+    if (updateError || !updated) {
       console.error("Update certification error:", updateError);
       return NextResponse.json(
         { error: "Failed to update certification" },

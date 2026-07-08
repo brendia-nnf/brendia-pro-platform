@@ -157,7 +157,7 @@ export function CertificationQueue() {
                   <p className="font-medium text-primary">{app.userName}</p>
                   <p className="text-sm text-gray-500">{app.userEmail}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Prijavljeno: {formatDate(app.appliedAt)}
+                    Prijavljeno: {app.appliedAt ? formatDate(new Date(app.appliedAt)) : "N/A"}
                   </p>
                 </div>
               </div>
