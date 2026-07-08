@@ -107,7 +107,7 @@ export default function ActivatePage({
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
-        router.push("/auth/login?activated=true");
+        router.push("/hr/prijava?activated=true");
       }, 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Došlo je do greške");
@@ -160,7 +160,7 @@ export default function ActivatePage({
           </p>
           <div className="space-y-3">
             <Link
-              href="/auth/login"
+              href="/hr/prijava"
               className="block w-full bg-secondary text-white py-3 px-4 rounded-lg font-medium hover:bg-secondary/90 transition-colors"
             >
               Prijava
