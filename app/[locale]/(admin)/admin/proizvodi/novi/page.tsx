@@ -2,15 +2,8 @@
 
 import { Container } from "@/components/ui";
 import { ProductForm } from "@/components/admin/ProductForm";
-import type { Product } from "@/lib/types/webshop";
 
 export default function NewProductPage() {
-  const handleSave = (product: Product) => {
-    // In a real app, this would call an API to create the product
-    console.log("Creating product:", product);
-    // The ProductForm handles navigation back to the list
-  };
-
   return (
     <Container size="xl">
       <div className="mb-6">
@@ -22,7 +15,7 @@ export default function NewProductPage() {
         </p>
       </div>
 
-      <ProductForm onSave={handleSave} />
+      <ProductForm />
     </Container>
   );
 }

@@ -1,22 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, Button, Input } from "@/components/ui";
-import { ArrowLeft, Package, Plus, X } from "lucide-react";
+import { ArrowLeft, Package, Plus, X, Upload, Loader2 } from "lucide-react";
 import type { Product, ProductCategory } from "@/lib/types/webshop";
 import { CATEGORY_LABELS } from "@/lib/types/webshop";
 import Link from "next/link";
 
 interface ProductFormProps {
   product?: Product;
-  onSave: (product: Product) => void;
 }
 
-export function ProductForm({ product, onSave }: ProductFormProps) {
+export function ProductForm({ product }: ProductFormProps) {
   const router = useRouter();
   const isEditing = !!product;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: product?.name || "",
@@ -31,8 +31,9 @@ export function ProductForm({ product, onSave }: ProductFormProps) {
     images: product?.images || [],
   });
 
-  const [newImageUrl, setNewImageUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const generateSlug = (name: string) => {
     return name
@@ -53,13 +54,43 @@ export function ProductForm({ product, onSave }: ProductFormProps) {
     }));
   };
 
-  const handleAddImage = () => {
-    if (newImageUrl.trim()) {
-      setForm((prev) => ({
-        ...prev,
-        images: [...prev.images, newImageUrl.trim()],
-      }));
-      setNewImageUrl("");
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", "products");
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Upload failed");
+        }
+
+        const data = await response.json();
+        setForm((prev) => ({
+          ...prev,
+          images: [...prev.images, data.url],
+        }));
+      }
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -74,8 +105,7 @@ export function ProductForm({ product, onSave }: ProductFormProps) {
     e.preventDefault();
     setIsSaving(true);
 
-    const productData: Product = {
-      id: product?.id || `product-${Date.now()}`,
+    const productData = {
       name: form.name,
       slug: form.slug || generateSlug(form.name),
       description: form.description,
@@ -86,14 +116,30 @@ export function ProductForm({ product, onSave }: ProductFormProps) {
       inStock: form.inStock,
       stockQuantity: Number(form.stockQuantity),
       featured: form.featured,
-      specifications: product?.specifications,
     };
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const url = isEditing ? `/api/products/${product.id}` : "/api/products";
+      const method = isEditing ? "PUT" : "POST";
 
-    onSave(productData);
-    router.push("/admin/proizvodi");
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productData),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save product");
+      }
+
+      router.push("/admin/proizvodi");
+    } catch (error) {
+      console.error("Save error:", error);
+      alert(error instanceof Error ? error.message : "Failed to save product");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatPrice = (price: string) => {
@@ -205,22 +251,40 @@ export function ProductForm({ product, onSave }: ProductFormProps) {
               </div>
             )}
 
-            {/* Add image */}
-            <div className="flex gap-2">
-              <Input
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                placeholder="URL slike (https://...)"
-                className="flex-1"
-              />
-              <Button type="button" variant="outline" onClick={handleAddImage}>
-                <Plus className="h-4 w-4 mr-2" />
-                Dodaj
-              </Button>
-            </div>
+            {/* Upload image */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Učitavanje...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Učitaj slike
+                </>
+              )}
+            </Button>
+            {uploadError && (
+              <p className="text-sm text-red-500 mt-2">{uploadError}</p>
+            )}
             <p className="text-xs text-gray-500 mt-2">
-              Unesite URL slike s interneta. Prva slika će biti prikazana kao
-              glavna.
+              Podržani formati: JPEG, PNG, WebP, GIF. Maksimalna veličina: 5MB.
+              Prva slika će biti prikazana kao glavna.
             </p>
           </Card>
 

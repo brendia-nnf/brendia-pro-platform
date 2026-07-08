@@ -1,10 +1,9 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui";
 import { ProductForm } from "@/components/admin/ProductForm";
-import { getProductById } from "@/lib/mock-data/products";
 import type { Product } from "@/lib/types/webshop";
 
 interface EditProductPageProps {
@@ -13,17 +12,54 @@ interface EditProductPageProps {
 
 export default function EditProductPage({ params }: EditProductPageProps) {
   const { productId } = use(params);
-  const product = getProductById(productId);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!product) {
+  useEffect(() => {
+    async function fetchProduct() {
+      try {
+        const response = await fetch(`/api/products/${productId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError("not_found");
+          } else {
+            setError("Failed to load product");
+          }
+          return;
+        }
+        const data = await response.json();
+        setProduct(data.product);
+      } catch (err) {
+        setError("Failed to load product");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProduct();
+  }, [productId]);
+
+  if (isLoading) {
+    return (
+      <Container size="xl">
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </Container>
+    );
+  }
+
+  if (error === "not_found" || !product) {
     notFound();
   }
 
-  const handleSave = (updatedProduct: Product) => {
-    // In a real app, this would call an API to update the product
-    console.log("Updating product:", updatedProduct);
-    // The ProductForm handles navigation back to the list
-  };
+  if (error) {
+    return (
+      <Container size="xl">
+        <div className="text-center py-12 text-red-500">{error}</div>
+      </Container>
+    );
+  }
 
   return (
     <Container size="xl">
@@ -36,7 +72,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         </p>
       </div>
 
-      <ProductForm product={product} onSave={handleSave} />
+      <ProductForm product={product} />
     </Container>
   );
 }
