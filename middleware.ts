@@ -31,8 +31,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   // Match all pathnames except for
   // - /api (API routes)
+  // - /auth (Auth routes like activation - outside i18n)
   // - /_next (Next.js internals)
   // - /_vercel (Vercel internals)
   // - /.*\..* (files with extensions, e.g. favicon.ico)
-  matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
+  matcher: ["/((?!api|auth|_next|_vercel|.*\\..*).*)"],
 };
