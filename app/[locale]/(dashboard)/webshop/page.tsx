@@ -1,26 +1,44 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Container } from "@/components/ui";
 import { ProductGrid, ProductFilters } from "@/components/webshop";
-import { mockProducts } from "@/lib/mock-data/products";
 import { useTranslations } from "next-intl";
-import type { ProductCategory } from "@/lib/types/webshop";
+import type { Product, ProductCategory } from "@/lib/types/webshop";
 import { ShoppingBag } from "lucide-react";
 
 type FilterCategory = ProductCategory | "all";
 
 export default function WebshopPage() {
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>("all");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const t = useTranslations("webshop");
   const tCommon = useTranslations("common");
 
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await fetch("/api/products");
+        if (response.ok) {
+          const data = await response.json();
+          setProducts(data.products || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
+
   const filteredProducts = useMemo(() => {
     if (selectedCategory === "all") {
-      return mockProducts;
+      return products;
     }
-    return mockProducts.filter((p) => p.category === selectedCategory);
-  }, [selectedCategory]);
+    return products.filter((p) => p.category === selectedCategory);
+  }, [selectedCategory, products]);
 
   return (
     <Container size="xl">
@@ -53,7 +71,14 @@ export default function WebshopPage() {
         />
 
         {/* Products grid */}
-        <ProductGrid products={filteredProducts} />
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 border-4 border-secondary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-500">Učitavanje proizvoda...</p>
+          </div>
+        ) : (
+          <ProductGrid products={filteredProducts} />
+        )}
 
         {/* Info banner */}
         <div className="bg-cream rounded-xl p-6 text-center">

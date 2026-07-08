@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, Badge, Button, Modal, ModalFooter } from "@/components/ui";
-import { mockProducts } from "@/lib/mock-data";
-import { Plus, Edit2, Trash2, Search, Package } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Package, RefreshCw } from "lucide-react";
 import type { Product, ProductCategory } from "@/lib/types/webshop";
 import { CATEGORY_LABELS } from "@/lib/types/webshop";
 
@@ -16,11 +15,32 @@ const categoryVariants: Record<ProductCategory, "secondary" | "success" | "warni
 };
 
 export function ProductsTable() {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<ProductCategory | "all">("all");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/products");
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -43,19 +63,45 @@ export function ProductsTable() {
     setDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedProduct) return;
-    setProducts((prev) => prev.filter((p) => p.id !== selectedProduct.id));
-    setDeleteModalOpen(false);
-    setSelectedProduct(null);
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/products/${selectedProduct.id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setProducts((prev) => prev.filter((p) => p.id !== selectedProduct.id));
+      }
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+      setSelectedProduct(null);
+    }
   };
 
-  const handleToggleStock = (productId: string) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId ? { ...p, inStock: !p.inStock } : p
-      )
-    );
+  const handleToggleStock = async (productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inStock: !product.inStock }),
+      });
+      if (response.ok) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === productId ? { ...p, inStock: !p.inStock } : p
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to toggle stock:", error);
+    }
   };
 
   return (
@@ -91,6 +137,10 @@ export function ProductsTable() {
               <option value="tools">Alati</option>
               <option value="care">Njega</option>
             </select>
+            <Button variant="outline" onClick={fetchProducts} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+              Osvježi
+            </Button>
             <Link href="/admin/proizvodi/novi">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -230,7 +280,14 @@ export function ProductsTable() {
           </table>
         </div>
 
-        {filteredProducts.length === 0 && (
+        {isLoading && (
+          <div className="text-center py-8 text-gray-500">
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+            Učitavanje proizvoda...
+          </div>
+        )}
+
+        {!isLoading && filteredProducts.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             Nema proizvoda koji odgovaraju pretrazi.
           </div>
@@ -251,10 +308,10 @@ export function ProductsTable() {
         </p>
 
         <ModalFooter>
-          <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+          <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={isDeleting}>
             Odustani
           </Button>
-          <Button variant="danger" onClick={handleConfirmDelete}>
+          <Button variant="danger" onClick={handleConfirmDelete} isLoading={isDeleting}>
             Obriši
           </Button>
         </ModalFooter>
