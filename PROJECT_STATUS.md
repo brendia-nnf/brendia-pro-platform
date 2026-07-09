@@ -1,6 +1,6 @@
 # Brendia Pro - Unified Project Status
 
-**Last Updated:** July 8, 2026
+**Last Updated:** July 9, 2026
 
 ---
 
@@ -21,8 +21,8 @@ BrendiaPro/
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Marketing Website | ✅ 95% | Missing video files, deployment pending |
-| Student Platform | ✅ 95% | Email integration pending |
+| Marketing Website | ✅ 97% | Deployed to Vercel; missing video files. Email delivery fixed |
+| Student Platform | ✅ 97% | Deployed to Vercel; admin panel fixed. Email working |
 | Mobile App (Flutter) | ✅ 80% | API integration, release prep pending |
 | Database/Supabase | ✅ Complete | All migrations ready |
 | Payment Gateway | ✅ Complete | Monri integrated (replaced Stripe) |
@@ -94,14 +94,16 @@ BrendiaPro/
 
 #### Environment & Deployment
 
-| Task | Project | Notes |
-|------|---------|-------|
-| Run master migration in Supabase | All | `000_master_migration.sql` |
-| Configure Monri credentials | Marketing | `MONRI_MERCHANT_KEY`, etc. |
-| Configure Resend API key | All | For email sending |
-| Deploy marketing site to Vercel | Marketing | Connect GitHub, add env vars |
-| Deploy platform to Vercel | Platform | Configure `app.brendiapro.hr` |
-| Configure Monri callback URL | Marketing | `https://brendiapro.hr/api/monri/callback` |
+| Task | Project | Notes | Status |
+|------|---------|-------|--------|
+| Run master migration in Supabase | All | `000_master_migration.sql` + `009_fix_admin_fk_relationships.sql` | ✅ Done |
+| Configure Monri credentials | Marketing | `MONRI_MERCHANT_KEY`, etc. | ✅ Done (test mode) |
+| Configure Resend API key | All | For email sending | ✅ Done |
+| Deploy marketing site to Vercel | Marketing | Connect GitHub, add env vars | ✅ Done |
+| Deploy platform to Vercel | Platform | Configure `app.brendiapro.hr` | ✅ Done |
+| Configure Monri callback URL | Marketing | `https://brendiapro.hr/api/monri/callback` | ✅ Done (test) |
+| **Switch Monri to production** | Marketing | Set `MONRI_ENVIRONMENT=production` + prod creds + prod callback URL | ⏳ Before go-live |
+| Add `RESEND_FROM_EMAIL` to Vercel | Marketing | Optional; `Brendia Pro <info@brendiapro.hr>` (code default now covers it) | ⏳ Optional |
 
 #### Platform Fixes
 
@@ -284,6 +286,34 @@ cd brendia_pro_app && flutter run -d "iPhone"
 ngrok http 3000
 # Then configure callback URL in Monri portal
 ```
+
+---
+
+## Recent Changes (July 9, 2026)
+
+### Email Delivery Fix (Marketing)
+- Fixed activation email sender: Monri callback fell back to Resend's test
+  domain (`onboarding@resend.dev`), which only delivers to the account owner —
+  real customers never received their account-activation link, and the error
+  was silently swallowed. Now defaults to verified `info@brendiapro.hr`.
+- Confirmed Resend domain (SPF/DKIM/DMARC) and API key are healthy; delivery
+  works end-to-end. Root cause of "emails not delivering" was missing env vars
+  on Vercel + the test-domain fallback.
+
+### Admin Panel Fixes (Platform)
+- **Fixed 500s on `/admin`, `/studenti`, `/certifikati`.** `enrollments.user_id`
+  and `certifications.user_id` referenced `auth.users` only, so PostgREST could
+  not embed `profiles` (PGRST200). Added migration `009_fix_admin_fk_relationships.sql`
+  (backfills profiles + adds FKs to `public.profiles`). Verified live.
+- **Fixed `/narudzbe` not showing what was ordered.** Course orders now populate
+  an `items` field, and the order detail modal renders a "Stavke narudžbe"
+  section. Mapped full `course_id` values (`foundation-certification`, etc.) to
+  readable names.
+
+### Deployment
+- Both apps deployed to Vercel (push-to-`main` → production deploy).
+- Master migration + migration 009 run in Supabase.
+- Monri configured in **test** mode (switch to production before go-live).
 
 ---
 
