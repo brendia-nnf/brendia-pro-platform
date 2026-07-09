@@ -17,7 +17,13 @@ interface Order {
   currency: string;
   status: OrderStatus;
   createdAt: string;
-  items?: unknown;
+  items?: Array<{
+    name?: string;
+    package?: string;
+    price?: number;
+    quantity?: number;
+    subtotal?: number;
+  }>;
   shippingAddress?: {
     fullName: string;
     street: string;
@@ -365,6 +371,38 @@ export function OrdersTable() {
                     Tel: {selectedOrder.shippingAddress.phone}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Order items */}
+            {selectedOrder.items && selectedOrder.items.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-medium text-primary mb-3">Stavke narudžbe</h4>
+                <div className="space-y-2">
+                  {selectedOrder.items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <div>
+                        <span className="text-primary">
+                          {item.name || "Proizvod"}
+                        </span>
+                        {item.package && (
+                          <span className="text-gray-500"> ({item.package})</span>
+                        )}
+                        {item.quantity && item.quantity > 1 && (
+                          <span className="text-gray-500"> × {item.quantity}</span>
+                        )}
+                      </div>
+                      {typeof (item.subtotal ?? item.price) === "number" && (
+                        <span className="text-gray-600">
+                          {formatPrice(item.subtotal ?? item.price ?? 0)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

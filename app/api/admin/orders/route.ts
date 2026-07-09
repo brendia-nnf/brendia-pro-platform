@@ -101,6 +101,7 @@ export async function GET(request: NextRequest) {
         };
 
         enrollments.forEach((e) => {
+          const productName = courseNames[e.course_id] || e.course_id;
           orders.push({
             id: e.id,
             type: "course",
@@ -111,6 +112,14 @@ export async function GET(request: NextRequest) {
             currency: e.currency,
             status: e.status,
             createdAt: e.purchased_at,
+            items: [
+              {
+                name: productName,
+                package: e.package,
+                price: e.amount_paid / 100,
+                quantity: 1,
+              },
+            ],
           });
         });
 
