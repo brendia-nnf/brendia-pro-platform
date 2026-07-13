@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { sendPurchaseConfirmation, sendWelcomeEmail } from "@/lib/email/send";
+import crypto from "crypto";
 import {
   verifyCallbackDigest,
   isSuccessfulPayment,
@@ -9,48 +10,88 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    let orderNumber: string;
+    let responseCode: string;
+    let transactionId: string | null;
+    let approvalCode: string | null;
+    let panToken: string | null;
+    let maskedPan: string | null;
 
-    // Extract callback parameters
-    const orderNumber = formData.get("order_number") as string;
-    const responseCode = formData.get("response_code") as string;
-    const amount = formData.get("amount") as string;
-    const currency = (formData.get("currency") as string) || "EUR";
-    const digest = formData.get("digest") as string;
-    const transactionId = formData.get("transaction_id") as string;
-    const approvalCode = formData.get("approval_code") as string;
-    const panToken = formData.get("pan_token") as string;
-    const maskedPan = formData.get("masked_pan") as string;
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      // Forwarded from the marketing site callback. Monri's dashboard only
+      // allows one callback URL (the marketing site's); it forwards webshop
+      // callbacks here as JSON, signed with the shared merchant key.
+      const rawBody = await request.text();
+      const forwardDigest = request.headers.get("x-forward-digest");
+      const expectedDigest = crypto
+        .createHash("sha512")
+        .update((process.env.MONRI_MERCHANT_KEY || "") + rawBody)
+        .digest("hex");
+
+      if (!forwardDigest || forwardDigest !== expectedDigest) {
+        console.error("Invalid forward digest");
+        return NextResponse.json({ error: "Invalid digest" }, { status: 401 });
+      }
+
+      const body = JSON.parse(rawBody);
+      orderNumber = body.order_number as string;
+      responseCode = body.response_code as string;
+      transactionId = body.id ? String(body.id) : null;
+      approvalCode = (body.approval_code as string) || null;
+      panToken = (body.pan_token as string) || null;
+      maskedPan = (body.masked_pan as string) || null;
+
+      if (!orderNumber || !responseCode) {
+        console.error("Missing required callback fields");
+        return NextResponse.json(
+          { error: "Missing required fields" },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Direct Monri form callback (legacy path) - digest required
+      const formData = await request.formData();
+
+      orderNumber = formData.get("order_number") as string;
+      responseCode = formData.get("response_code") as string;
+      const amount = formData.get("amount") as string;
+      const currency = (formData.get("currency") as string) || "EUR";
+      const digest = formData.get("digest") as string;
+      transactionId = formData.get("transaction_id") as string;
+      approvalCode = formData.get("approval_code") as string;
+      panToken = formData.get("pan_token") as string;
+      maskedPan = formData.get("masked_pan") as string;
+
+      if (!orderNumber || !responseCode || !amount || !digest) {
+        console.error("Missing required callback fields");
+        return NextResponse.json(
+          { error: "Missing required fields" },
+          { status: 400 }
+        );
+      }
+
+      const amountNumber = parseInt(amount, 10);
+      const isValid = verifyCallbackDigest(
+        digest,
+        orderNumber,
+        responseCode,
+        amountNumber,
+        currency
+      );
+
+      if (!isValid) {
+        console.error("Invalid callback digest");
+        return NextResponse.json(
+          { error: "Invalid digest" },
+          { status: 400 }
+        );
+      }
+    }
 
     console.log(`Monri callback received for order: ${orderNumber}`);
     console.log(`Response code: ${responseCode} - ${getResponseMessage(responseCode)}`);
-
-    // Validate required fields
-    if (!orderNumber || !responseCode || !amount || !digest) {
-      console.error("Missing required callback fields");
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Verify callback digest
-    const amountNumber = parseInt(amount, 10);
-    const isValid = verifyCallbackDigest(
-      digest,
-      orderNumber,
-      responseCode,
-      amountNumber,
-      currency
-    );
-
-    if (!isValid) {
-      console.error("Invalid callback digest");
-      return NextResponse.json(
-        { error: "Invalid digest" },
-        { status: 400 }
-      );
-    }
 
     const supabase = createAdminClient();
     const isSuccess = isSuccessfulPayment(responseCode);

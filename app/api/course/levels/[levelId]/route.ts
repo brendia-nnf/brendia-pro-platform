@@ -32,6 +32,8 @@ export async function GET(
         video_duration: number;
         video_thumbnail_url: string | null;
         is_preview: boolean;
+        is_published: boolean;
+        requires_photos: boolean;
         sort_order: number;
       }> | null;
     }
@@ -52,6 +54,8 @@ export async function GET(
           video_duration,
           video_thumbnail_url,
           is_preview,
+          is_published,
+          requires_photos,
           sort_order
         )
       `
@@ -59,6 +63,11 @@ export async function GET(
       .eq("id", levelId)
       .eq("is_published", true)
       .single() as { data: LevelRow | null; error: unknown };
+
+    // Students only see published chapters
+    if (level) {
+      level.chapters = (level.chapters || []).filter((c) => c.is_published);
+    }
 
     if (levelError || !level) {
       return NextResponse.json(
@@ -71,6 +80,7 @@ export async function GET(
     let hasAccess = false;
     let enrollment = null;
     let userProgress: Record<string, { watchPercentage: number; completed: boolean; lastPosition: number }> = {};
+    const photoStatuses: Record<string, string> = {};
 
     if (user) {
       interface EnrollmentRow {
@@ -90,9 +100,9 @@ export async function GET(
       enrollment = enrollmentData;
 
       if (enrollment) {
-        if (level.level_number <= 2) {
+        if (level.required_package !== "advanced") {
           hasAccess = true;
-        } else if (level.level_number === 3 && enrollment.package === "advanced") {
+        } else if (enrollment.package === "advanced") {
           hasAccess = true;
         }
       }
@@ -126,8 +136,34 @@ export async function GET(
             {} as Record<string, { watchPercentage: number; completed: boolean; lastPosition: number }>
           );
         }
+
+        interface SubmissionStatusRow {
+          chapter_id: string;
+          attempt_number: number;
+          status: string;
+        }
+
+        // Latest photo submission status per chapter
+        const { data: submissionData } = await supabase
+          .from("photo_submissions")
+          .select("chapter_id, attempt_number, status")
+          .eq("user_id", user.id)
+          .in("chapter_id", chapterIds)
+          .order("attempt_number", { ascending: false }) as {
+            data: SubmissionStatusRow[] | null;
+          };
+
+        for (const s of submissionData || []) {
+          if (!photoStatuses[s.chapter_id]) {
+            photoStatuses[s.chapter_id] = s.status;
+          }
+        }
       }
     }
+
+    // Sequential unlock within the level: a chapter is locked until the
+    // previous one is watched and, if it requires photos, has a submission.
+    let previousSatisfied = true;
 
     const chapters = (level.chapters || [])
       .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
@@ -141,19 +177,46 @@ export async function GET(
         video_duration: number;
         video_thumbnail_url: string | null;
         is_preview: boolean;
+        requires_photos: boolean;
       }) => {
         const progress = userProgress[chapter.id];
-        let state: "locked" | "available" | "in_progress" | "completed" = "locked";
+        const photoStatus = photoStatuses[chapter.id] || null;
+        let state:
+          | "locked"
+          | "available"
+          | "in_progress"
+          | "awaiting_photos"
+          | "photos_in_review"
+          | "redo_requested"
+          | "completed" = "locked";
 
-        if (hasAccess || chapter.is_preview) {
+        if ((hasAccess && previousSatisfied) || chapter.is_preview) {
           if (progress?.completed) {
-            state = "completed";
+            if (chapter.requires_photos) {
+              if (!photoStatus) {
+                state = "awaiting_photos";
+              } else if (photoStatus === "pending") {
+                state = "photos_in_review";
+              } else if (photoStatus === "redo_requested") {
+                state = "redo_requested";
+              } else {
+                state = "completed";
+              }
+            } else {
+              state = "completed";
+            }
           } else if (progress && progress.watchPercentage > 0) {
             state = "in_progress";
           } else {
             state = "available";
           }
         }
+
+        // The next chapter unlocks once this one is watched and, when
+        // photos are required, at least submitted (approval not needed)
+        previousSatisfied =
+          !!progress?.completed &&
+          (!chapter.requires_photos || photoStatus !== null);
 
         return {
           id: chapter.id,
@@ -165,6 +228,8 @@ export async function GET(
           videoDuration: chapter.video_duration,
           thumbnailUrl: chapter.video_thumbnail_url,
           isPreview: chapter.is_preview,
+          requiresPhotos: chapter.requires_photos,
+          photoStatus,
           state,
           watchPercentage: progress?.watchPercentage || 0,
           lastPosition: progress?.lastPosition || 0,

@@ -11,6 +11,17 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // Admins (course editor) also see unpublished levels/chapters
+    let isAdmin = false;
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single() as { data: { role: string } | null };
+      isAdmin = profile?.role === "admin";
+    }
+
     interface LevelRow {
       id: string;
       level_number: number;
@@ -20,6 +31,7 @@ export async function GET(request: NextRequest) {
       description_en: string | null;
       required_package: string;
       required_level: number;
+      is_published: boolean;
       chapters: Array<{
         id: string;
         chapter_number: number;
@@ -28,14 +40,17 @@ export async function GET(request: NextRequest) {
         description: string | null;
         description_en: string | null;
         video_duration: number;
+        video_url: string | null;
         video_thumbnail_url: string | null;
         is_preview: boolean;
+        is_published: boolean;
+        requires_photos: boolean;
         sort_order: number;
       }> | null;
     }
 
-    // Fetch all published levels with chapters
-    const { data: levels, error: levelsError } = await supabase
+    // Fetch levels with chapters (students: published only)
+    let levelsQuery = supabase
       .from("levels")
       .select(
         `
@@ -48,14 +63,32 @@ export async function GET(request: NextRequest) {
           description,
           description_en,
           video_duration,
+          video_url,
           video_thumbnail_url,
           is_preview,
+          is_published,
+          requires_photos,
           sort_order
         )
       `
       )
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true }) as { data: LevelRow[] | null; error: unknown };
+      .order("sort_order", { ascending: true });
+
+    if (!isAdmin) {
+      levelsQuery = levelsQuery.eq("is_published", true);
+    }
+
+    const { data: levels, error: levelsError } = await levelsQuery as unknown as {
+      data: LevelRow[] | null;
+      error: unknown;
+    };
+
+    // Students only see published chapters
+    if (!isAdmin && levels) {
+      for (const level of levels) {
+        level.chapters = (level.chapters || []).filter((c) => c.is_published);
+      }
+    }
 
     if (levelsError || !levels) {
       console.error("Fetch levels error:", levelsError);
@@ -123,11 +156,11 @@ export async function GET(request: NextRequest) {
       let lockReason = "not_enrolled";
 
       if (enrollment) {
-        if (level.level_number <= 2) {
-          // Levels 1-2 available to any enrolled user
+        if (level.required_package !== "advanced") {
+          // Basic-package levels available to any enrolled user
           isLocked = false;
-        } else if (level.level_number === 3) {
-          // Level 3 only for advanced package
+        } else {
+          // Advanced-package levels only for advanced package
           if (enrollment.package === "advanced") {
             isLocked = false;
           } else {
@@ -163,8 +196,11 @@ export async function GET(request: NextRequest) {
           description: string | null;
           description_en: string | null;
           video_duration: number;
+          video_url: string | null;
           video_thumbnail_url: string | null;
           is_preview: boolean;
+          is_published: boolean;
+          requires_photos: boolean;
         }) => {
           const progress = userProgress[chapter.id];
           let state: "locked" | "available" | "in_progress" | "completed" = "locked";
@@ -189,6 +225,9 @@ export async function GET(request: NextRequest) {
             videoDuration: chapter.video_duration,
             thumbnailUrl: chapter.video_thumbnail_url,
             isPreview: chapter.is_preview,
+            isPublished: chapter.is_published,
+            requiresPhotos: chapter.requires_photos,
+            hasVideo: !!chapter.video_url,
             state,
             watchPercentage: progress?.watchPercentage || 0,
           };
@@ -202,6 +241,7 @@ export async function GET(request: NextRequest) {
         description: level.description,
         descriptionEn: level.description_en,
         requiredPackage: level.required_package,
+        isPublished: level.is_published,
         isLocked,
         lockReason: isLocked ? lockReason : null,
         chapters,

@@ -96,14 +96,14 @@ export async function GET(request: NextRequest) {
 
         const courseNames: Record<string, string> = {
           // Actual course_id values used by enrollments (from marketing checkout)
-          "foundation-certification": "Foundation Certification",
-          "master-certification": "Master Certification",
-          "brendia-pro-artist-1v1": "Brendia Pro Artist 1v1",
-          "brendia-pro-master-1v1": "Brendia Pro Master 1v1",
+          "foundation-certification": "Brendia Pro® Artist",
+          "master-certification": "Advanced Brendia Pro® Artist",
+          "brendia-pro-artist-1v1": "Brendia Pro® Artist 1v1",
+          "brendia-pro-master-1v1": "Brendia Pro® Master 1v1",
           // Legacy short ids (fallback)
-          foundation: "Brendia Pro Artist",
-          master: "Brendia Pro Master",
-          advanced: "Advanced Brendia Pro Artist",
+          foundation: "Brendia Pro® Artist",
+          master: "Advanced Brendia Pro® Artist",
+          advanced: "Advanced Brendia Pro® Artist",
         };
 
         enrollments.forEach((e) => {

@@ -117,7 +117,8 @@
       "notStarted": "Nije započeto",
       "reviewAgain": "Pregledaj ponovo",
       "continueLesson": "Nastavi učenje",
-      "start": "Započni"
+      "start": "Započni",
+      "locked": "Zaključano"
     },
     "certification": {
       "congratulations": "Čestitamo! Spremni ste za certifikaciju.",
@@ -134,7 +135,8 @@
       "deliveredDescription": "Vaš kit je uspješno dostavljen.",
       "stepPreparing": "Priprema",
       "stepShipping": "Dostava",
-      "stepDelivered": "Primljeno"
+      "stepDelivered": "Primljeno",
+      "trackingNumber": "Broj za praćenje"
     }
   },
   "webshop": {
@@ -229,7 +231,8 @@
       "current": "Trenutni",
       "lastActive": "Zadnja aktivnost:",
       "logoutButton": "Odjavi",
-      "maxDevices": "Možete biti prijavljeni na maksimalno 2 uređaja istovremeno."
+      "maxDevices": "Možete biti prijavljeni na maksimalno 2 uređaja istovremeno.",
+      "empty": "Nema prijavljenih uređaja."
     },
     "purchases": {
       "title": "Povijest kupnje",

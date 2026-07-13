@@ -117,7 +117,8 @@
       "notStarted": "Not started",
       "reviewAgain": "Review again",
       "continueLesson": "Continue learning",
-      "start": "Start"
+      "start": "Start",
+      "locked": "Locked"
     },
     "certification": {
       "congratulations": "Congratulations! You're ready for certification.",
@@ -134,7 +135,8 @@
       "deliveredDescription": "Your kit has been successfully delivered.",
       "stepPreparing": "Preparing",
       "stepShipping": "Shipping",
-      "stepDelivered": "Received"
+      "stepDelivered": "Received",
+      "trackingNumber": "Tracking number"
     }
   },
   "webshop": {
@@ -229,7 +231,8 @@
       "current": "Current",
       "lastActive": "Last active:",
       "logoutButton": "Log out",
-      "maxDevices": "You can be logged in on a maximum of 2 devices simultaneously."
+      "maxDevices": "You can be logged in on a maximum of 2 devices simultaneously.",
+      "empty": "No devices signed in."
     },
     "purchases": {
       "title": "Purchase History",

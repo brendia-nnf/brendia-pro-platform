@@ -90,9 +90,11 @@ export async function POST(
       );
     }
 
-    // Check level access
-    const levelNum = chapter.level?.level_number || 1;
-    if (levelNum === 3 && enrollment.package !== "advanced") {
+    // Check level access (package-based)
+    if (
+      chapter.level?.required_package === "advanced" &&
+      enrollment.package !== "advanced"
+    ) {
       return NextResponse.json(
         { error: "Access denied - requires advanced package" },
         { status: 403 }
@@ -104,6 +106,44 @@ export async function POST(
       completed: boolean;
       last_position: number;
       watch_time: number;
+    }
+
+    // Enforce sequential unlock server-side: the previous chapter must be
+    // completed and, if it requires photos, have a submitted photo set.
+    // Chapters the user already started are always allowed (content may
+    // have been reordered after they began).
+    const { data: existingProgress } = await supabase
+      .from("progress")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("chapter_id", chapterId)
+      .maybeSingle() as { data: { id: string } | null };
+
+    if (!existingProgress) {
+      const { data: gate } = await supabase.rpc("can_start_chapter", {
+        p_user_id: user.id,
+        p_chapter_id: chapterId,
+      } as never) as {
+        data: {
+          allowed: boolean;
+          reason?: string;
+          previousChapterId?: string;
+        } | null;
+      };
+
+      if (gate && !gate.allowed) {
+        return NextResponse.json(
+          {
+            error:
+              gate.reason === "photos_required"
+                ? "Submit work photos for the previous chapter to continue"
+                : "Complete the previous chapter to continue",
+            reason: gate.reason,
+            previousChapterId: gate.previousChapterId,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Upsert progress

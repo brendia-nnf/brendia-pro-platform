@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Container, Button, Card } from "@/components/ui";
@@ -9,58 +9,166 @@ import {
   ChapterSidebar,
   ProgressTracker,
   CompletionModal,
+  PhotoSubmissionPanel,
 } from "@/components/course";
-import { useProgress } from "@/hooks/useProgress";
-import { getLevelById, getChapterById } from "@/lib/mock-data/courses";
-import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import type { Chapter, ChapterStatus, ChapterState, PhotoSubmission } from "@/lib/types";
+import { ChevronLeft, ChevronRight, Menu, Loader2 } from "lucide-react";
+
+interface LevelChapterItem {
+  id: string;
+  chapterNumber: number;
+  title: string;
+  description: string | null;
+  videoDuration: number;
+  thumbnailUrl: string | null;
+  requiresPhotos: boolean;
+  photoStatus: string | null;
+  state: ChapterState;
+  watchPercentage: number;
+}
+
+interface LevelData {
+  id: string;
+  levelNumber: number;
+  title: string;
+  hasAccess: boolean;
+  chapters: LevelChapterItem[];
+  totalChapters: number;
+  completedChapters: number;
+}
+
+interface ChapterData {
+  id: string;
+  levelId: string;
+  chapterNumber: number;
+  title: string;
+  description: string | null;
+  videoDuration: number | null;
+  thumbnailUrl: string | null;
+  requiresPhotos: boolean;
+  hasAccess: boolean;
+  videoUrl?: string;
+  progress?: {
+    watchPercentage: number;
+    completed: boolean;
+    lastPosition: number;
+  };
+  photoSubmission?: PhotoSubmission | null;
+  previousChapter?: { id: string; title: string };
+  nextChapter?: { id: string; title: string };
+}
 
 export default function CoursePlayerPage() {
   const params = useParams();
   const levelId = params.levelId as string;
   const chapterId = params.chapterId as string;
 
-  const { getChapterStatuses, updateChapterProgress } = useProgress();
-
+  const [level, setLevel] = useState<LevelData | null>(null);
+  const [chapter, setChapter] = useState<ChapterData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [watchPercentage, setWatchPercentage] = useState(0);
+  const [submission, setSubmission] = useState<PhotoSubmission | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const watchPercentageRef = useRef(0);
 
-  const level = getLevelById(levelId);
-  const chapter = getChapterById(chapterId);
-  const statuses = level ? getChapterStatuses(level.id) : [];
+  const fetchLevel = useCallback(async () => {
+    const response = await fetch(`/api/course/levels/${levelId}`);
+    if (response.ok) {
+      setLevel(await response.json());
+    }
+  }, [levelId]);
 
-  // Get current chapter index and find next/previous chapters
-  const currentIndex = level?.chapters.findIndex((ch) => ch.id === chapterId) ?? -1;
-  const previousChapter = currentIndex > 0 ? level?.chapters[currentIndex - 1] : null;
-  const nextChapter =
-    currentIndex < (level?.chapters.length ?? 0) - 1
-      ? level?.chapters[currentIndex + 1]
-      : null;
-
-  // Initialize watch percentage from progress
   useEffect(() => {
-    if (chapterId) {
-      const status = statuses.find((s) => s.chapterId === chapterId);
-      if (status) {
-        setWatchPercentage(status.watchPercentage);
+    let cancelled = false;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [levelRes, chapterRes] = await Promise.all([
+          fetch(`/api/course/levels/${levelId}`),
+          fetch(`/api/course/levels/${levelId}/chapters/${chapterId}`),
+        ]);
+
+        if (cancelled) return;
+
+        if (levelRes.ok) {
+          setLevel(await levelRes.json());
+        }
+
+        if (chapterRes.ok) {
+          const chapterData: ChapterData = await chapterRes.json();
+          setChapter(chapterData);
+          setSubmission(chapterData.photoSubmission || null);
+          const initial = chapterData.progress?.watchPercentage || 0;
+          setWatchPercentage(initial);
+          watchPercentageRef.current = initial;
+        } else {
+          setChapter(null);
+        }
+      } catch (error) {
+        console.error("Failed to load chapter:", error);
+        if (!cancelled) setChapter(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }
-  }, [chapterId, statuses]);
+    };
 
-  const handleProgress = (percentage: number) => {
-    setWatchPercentage(percentage);
-    updateChapterProgress(chapterId, percentage);
+    fetchData();
 
-    // Show completion modal when reaching 95%
-    if (percentage >= 95 && watchPercentage < 95) {
-      setShowCompletionModal(true);
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [levelId, chapterId]);
 
-  const isCompleted = watchPercentage >= 95;
-  const isNextEnabled = isCompleted && nextChapter;
-  const isLevelComplete =
-    isCompleted && !nextChapter && currentIndex === (level?.chapters.length ?? 0) - 1;
+  const handleProgress = useCallback(
+    (percentage: number, position: number) => {
+      const previous = watchPercentageRef.current;
+      const next = Math.max(previous, Math.round(percentage));
+      watchPercentageRef.current = next;
+      setWatchPercentage(next);
+
+      fetch(`/api/progress/${chapterId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          watchPercentage: next,
+          lastPosition: Math.round(position),
+        }),
+      }).catch((error) => console.error("Failed to save progress:", error));
+
+      // Show completion modal when reaching 95%
+      if (next >= 95 && previous < 95) {
+        setShowCompletionModal(true);
+        // Refresh sidebar states (chapter just completed)
+        fetchLevel();
+      }
+    },
+    [chapterId, fetchLevel]
+  );
+
+  const handleSubmitted = useCallback(
+    (newSubmission: PhotoSubmission) => {
+      setSubmission(newSubmission);
+      // Refresh sidebar states (next chapter just unlocked)
+      fetchLevel();
+    },
+    [fetchLevel]
+  );
+
+  const scrollToPhotos = useCallback(() => {
+    document
+      .getElementById("photo-submission")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-secondary" />
+      </div>
+    );
+  }
 
   if (!level || !chapter) {
     return (
@@ -80,7 +188,48 @@ export default function CoursePlayerPage() {
     );
   }
 
-  const levelName = level.levelNumber === 1 ? "Razina 1" : "Razina 2";
+  const currentIndex = level.chapters.findIndex((ch) => ch.id === chapterId);
+  const previousChapter = chapter.previousChapter;
+  const nextChapter = chapter.nextChapter;
+
+  const isCompleted = watchPercentage >= 95 || !!chapter.progress?.completed;
+  const needsPhotos = chapter.requiresPhotos && !submission;
+  const isNextEnabled = isCompleted && !needsPhotos && !!nextChapter;
+  const isLevelComplete =
+    isCompleted &&
+    !needsPhotos &&
+    !nextChapter &&
+    currentIndex === level.chapters.length - 1;
+
+  const levelName = `Razina ${level.levelNumber}`;
+  const levelProgress =
+    level.totalChapters > 0
+      ? Math.round((level.completedChapters / level.totalChapters) * 100)
+      : 0;
+
+  // Map API chapters to sidebar props
+  const sidebarChapters: Chapter[] = level.chapters.map((ch) => ({
+    id: ch.id,
+    levelId: level.id,
+    chapterNumber: ch.chapterNumber,
+    title: ch.title,
+    description: ch.description || "",
+    videoDuration: ch.videoDuration,
+    thumbnailUrl: ch.thumbnailUrl || "",
+    requiresPhotos: ch.requiresPhotos,
+  }));
+
+  const sidebarStatuses: ChapterStatus[] = level.chapters.map((ch) => ({
+    chapterId: ch.id,
+    state: ch.id === chapterId && ch.state === "available" ? "in_progress" : ch.state,
+    watchPercentage: ch.watchPercentage,
+  }));
+
+  const nextDisabledHint = !isCompleted
+    ? "Pogledajte 95% videa za nastavak"
+    : needsPhotos
+      ? "Pošaljite fotografije rada za nastavak"
+      : undefined;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -92,13 +241,17 @@ export default function CoursePlayerPage() {
             Nadzorna ploča
           </Link>
           <ChevronRight className="h-4 w-4 text-gray-400" />
-          <Link
-            href={`/tecaj/${levelId}/${level.chapters[0].id}`}
-            className="hover:text-primary transition-colors"
-          >
-            {levelName}
-          </Link>
-          <ChevronRight className="h-4 w-4 text-gray-400" />
+          {level.chapters[0] && (
+            <>
+              <Link
+                href={`/tecaj/${levelId}/${level.chapters[0].id}`}
+                className="hover:text-primary transition-colors"
+              >
+                {levelName}
+              </Link>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </>
+          )}
           <span className="text-primary font-medium">
             Poglavlje {chapter.chapterNumber}
           </span>
@@ -107,7 +260,10 @@ export default function CoursePlayerPage() {
         {/* Video player */}
         <VideoPlayer
           title={chapter.title}
-          thumbnailUrl={chapter.thumbnailUrl}
+          videoUrl={chapter.videoUrl}
+          thumbnailUrl={chapter.thumbnailUrl || undefined}
+          duration={chapter.videoDuration || 0}
+          initialPosition={chapter.progress?.lastPosition || 0}
           watchPercentage={watchPercentage}
           onProgress={handleProgress}
         />
@@ -158,15 +314,7 @@ export default function CoursePlayerPage() {
                 href={`/tecaj/${levelId}/${nextChapter.id}`}
                 className={!isNextEnabled ? "pointer-events-none" : ""}
               >
-                <Button
-                  size="sm"
-                  disabled={!isNextEnabled}
-                  title={
-                    !isNextEnabled
-                      ? "Pogledajte 95% videa za nastavak"
-                      : undefined
-                  }
-                >
+                <Button size="sm" disabled={!isNextEnabled} title={nextDisabledHint}>
                   Sljedeće poglavlje
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -174,11 +322,25 @@ export default function CoursePlayerPage() {
             )}
           </div>
         </Card>
+
+        {/* Photo submission (practical chapters only) */}
+        {chapter.requiresPhotos && (
+          <PhotoSubmissionPanel
+            chapterId={chapter.id}
+            submission={submission}
+            isChapterWatched={isCompleted}
+            onSubmitted={handleSubmitted}
+          />
+        )}
       </div>
 
       {/* Chapter sidebar */}
       <ChapterSidebar
-        level={level}
+        levelId={level.id}
+        levelTitle={level.title}
+        levelProgress={levelProgress}
+        chapters={sidebarChapters}
+        statuses={sidebarStatuses}
         currentChapterId={chapterId}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -193,6 +355,9 @@ export default function CoursePlayerPage() {
         nextChapterTitle={nextChapter?.title}
         levelId={levelId}
         isLevelComplete={isLevelComplete}
+        requiresPhotos={chapter.requiresPhotos}
+        hasSubmission={!!submission}
+        onGoToPhotos={scrollToPhotos}
       />
     </div>
   );

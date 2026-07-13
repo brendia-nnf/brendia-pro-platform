@@ -1,95 +1,123 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import {
-  mockUserProgress,
-  calculateLevelProgress,
-  getLastWatchedChapter,
-  getChapterStatus,
-  type UserProgress,
-} from "@/lib/mock-data/progress";
-import { mockChapters } from "@/lib/mock-data/courses";
-import type { ChapterStatus } from "@/lib/types";
+import { useState, useEffect, useCallback } from "react";
+
+export interface LevelProgressInfo {
+  id: string;
+  levelNumber: number;
+  title: string;
+  titleEn?: string | null;
+  description?: string | null;
+  descriptionEn?: string | null;
+  isLocked: boolean;
+  lockReason?: string | null;
+  firstChapterId: string | null;
+  progressPercentage: number;
+  totalChapters: number;
+  completedChapters: number;
+}
+
+interface ProgressByLevel {
+  levelNumber: number;
+  totalChapters: number;
+  completedChapters: number;
+  progressPercentage: number;
+}
 
 export function useProgress() {
-  const [progress, setProgress] = useState<UserProgress[]>(mockUserProgress);
+  const [levels, setLevels] = useState<LevelProgressInfo[]>([]);
+  const [overallProgress, setOverallProgress] = useState(0);
+  const [certificationStatus, setCertificationStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const getLevelProgress = useCallback((levelId: string): number => {
-    return calculateLevelProgress(levelId);
-  }, []);
+  const fetchAll = useCallback(async () => {
+    try {
+      const [levelsRes, progressRes, certRes] = await Promise.all([
+        fetch("/api/course/levels"),
+        fetch("/api/progress"),
+        fetch("/api/certification"),
+      ]);
 
-  const getLastWatched = useCallback(() => {
-    return getLastWatchedChapter();
-  }, []);
+      const levelsData = levelsRes.ok ? await levelsRes.json() : { levels: [] };
+      const progressData = progressRes.ok ? await progressRes.json() : null;
+      const certData = certRes.ok ? await certRes.json() : null;
 
-  const getChapterStatuses = useCallback((levelId: string): ChapterStatus[] => {
-    const levelChapters = mockChapters.filter((ch) => ch.levelId === levelId);
-    const statuses: ChapterStatus[] = [];
+      const progressByLevel = new Map<number, ProgressByLevel>(
+        ((progressData?.byLevel || []) as ProgressByLevel[]).map((p) => [
+          p.levelNumber,
+          p,
+        ])
+      );
 
-    let previousCompleted = true;
+      interface ApiLevel {
+        id: string;
+        levelNumber: number;
+        title: string;
+        titleEn?: string | null;
+        description?: string | null;
+        descriptionEn?: string | null;
+        isLocked: boolean;
+        lockReason?: string | null;
+        chapters?: Array<{ id: string }>;
+      }
 
-    for (const chapter of levelChapters) {
-      const status = getChapterStatus(chapter.id, previousCompleted);
-      statuses.push(status);
-      previousCompleted = status.state === "completed";
+      setLevels(
+        ((levelsData?.levels || []) as ApiLevel[]).map((level) => {
+          const progress = progressByLevel.get(level.levelNumber);
+          return {
+            id: level.id,
+            levelNumber: level.levelNumber,
+            title: level.title,
+            titleEn: level.titleEn,
+            description: level.description,
+            descriptionEn: level.descriptionEn,
+            isLocked: level.isLocked,
+            lockReason: level.lockReason,
+            firstChapterId: level.chapters?.[0]?.id || null,
+            progressPercentage: progress?.progressPercentage ?? 0,
+            totalChapters: progress?.totalChapters ?? 0,
+            completedChapters: progress?.completedChapters ?? 0,
+          };
+        })
+      );
+
+      setOverallProgress(progressData?.overall?.progressPercentage || 0);
+      setCertificationStatus(certData?.status || null);
+    } catch (error) {
+      console.error("Failed to fetch progress:", error);
+    } finally {
+      setLoading(false);
     }
-
-    return statuses;
   }, []);
 
-  const updateChapterProgress = useCallback(
-    (chapterId: string, watchPercentage: number) => {
-      setProgress((prev) => {
-        const existing = prev.find((p) => p.chapterId === chapterId);
-        const isCompleted = watchPercentage >= 95;
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-        if (existing) {
-          return prev.map((p) =>
-            p.chapterId === chapterId
-              ? {
-                  ...p,
-                  watchPercentage,
-                  completed: isCompleted,
-                  lastWatchedAt: new Date(),
-                }
-              : p
-          );
-        }
-
-        return [
-          ...prev,
-          {
-            chapterId,
-            watchPercentage,
-            completed: isCompleted,
-            lastWatchedAt: new Date(),
-          },
-        ];
-      });
+  const getLevelProgress = useCallback(
+    (levelNumber: number): number => {
+      return (
+        levels.find((l) => l.levelNumber === levelNumber)?.progressPercentage ?? 0
+      );
     },
-    []
+    [levels]
   );
 
-  const isLevel1Complete = useCallback(() => {
-    return getLevelProgress("level-1") === 100;
-  }, [getLevelProgress]);
+  // Certificate page is reachable once the user is at least eligible
+  const canAccessCertification =
+    certificationStatus !== null && certificationStatus !== "not_eligible";
 
-  const isLevel2Complete = useCallback(() => {
-    return getLevelProgress("level-2") === 100;
-  }, [getLevelProgress]);
-
-  const canAccessCertification = useCallback(() => {
-    return isLevel1Complete() && isLevel2Complete();
-  }, [isLevel1Complete, isLevel2Complete]);
+  // The "apply now" banner only makes sense while eligible and not yet applied
+  const isCertificationEligible = certificationStatus === "eligible";
 
   return {
-    progress,
-    getLevelProgress,
-    getLastWatched,
-    getChapterStatuses,
-    updateChapterProgress,
-    isLevel1Complete,
-    isLevel2Complete,
+    loading,
+    levels,
+    overallProgress,
+    certificationStatus,
     canAccessCertification,
+    isCertificationEligible,
+    getLevelProgress,
+    refresh: fetchAll,
   };
 }

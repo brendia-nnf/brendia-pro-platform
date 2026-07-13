@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils";
-import { Lock, Play, CheckCircle2, Clock } from "lucide-react";
+import { Lock, Play, CheckCircle2, Clock, Camera, Hourglass, RotateCcw } from "lucide-react";
 import type { Chapter, ChapterStatus } from "@/lib/types";
 
 interface ChapterCardProps {
@@ -20,6 +20,17 @@ export function ChapterCard({
   const isLocked = status.state === "locked";
   const isCompleted = status.state === "completed";
   const isInProgress = status.state === "in_progress";
+  const isAwaitingPhotos = status.state === "awaiting_photos";
+  const isPhotosInReview = status.state === "photos_in_review";
+  const isRedoRequested = status.state === "redo_requested";
+
+  const photoStateLabel = isAwaitingPhotos
+    ? "Pošaljite fotografije rada"
+    : isPhotosInReview
+      ? "Rad na pregledu"
+      : isRedoRequested
+        ? "Potrebna dorada rada"
+        : null;
 
   const content = (
     <div
@@ -36,6 +47,9 @@ export function ChapterCard({
           "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
           isCompleted && "bg-success/10 text-success",
           isInProgress && "bg-secondary/10 text-secondary",
+          isAwaitingPhotos && "bg-warning/10 text-warning",
+          isPhotosInReview && "bg-secondary/10 text-secondary",
+          isRedoRequested && "bg-error/10 text-error",
           status.state === "available" && "bg-gray-100 text-gray-400",
           isLocked && "bg-gray-100 text-gray-300"
         )}
@@ -44,6 +58,12 @@ export function ChapterCard({
           <Lock className="h-4 w-4" />
         ) : isCompleted ? (
           <CheckCircle2 className="h-4 w-4" />
+        ) : isAwaitingPhotos ? (
+          <Camera className="h-4 w-4" />
+        ) : isPhotosInReview ? (
+          <Hourglass className="h-4 w-4" />
+        ) : isRedoRequested ? (
+          <RotateCcw className="h-4 w-4" />
         ) : isActive ? (
           <Play className="h-4 w-4" />
         ) : (
@@ -75,6 +95,16 @@ export function ChapterCard({
             </>
           )}
         </div>
+        {photoStateLabel && (
+          <p
+            className={cn(
+              "text-xs mt-1",
+              isRedoRequested ? "text-error" : isAwaitingPhotos ? "text-warning" : "text-secondary"
+            )}
+          >
+            {photoStateLabel}
+          </p>
+        )}
       </div>
     </div>
   );

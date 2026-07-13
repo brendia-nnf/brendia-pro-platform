@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, Badge } from "@/components/ui";
+import { Card, Button, Badge, Modal, ModalFooter, Input } from "@/components/ui";
 import { formatDuration } from "@/lib/utils";
 import {
   ChevronDown,
@@ -11,8 +11,11 @@ import {
   Trash2,
   GripVertical,
   Video,
+  Camera,
   RefreshCw,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface Chapter {
@@ -25,6 +28,9 @@ interface Chapter {
   videoDuration: number;
   thumbnailUrl?: string;
   isPreview: boolean;
+  isPublished?: boolean;
+  requiresPhotos?: boolean;
+  hasVideo?: boolean;
   state: string;
   watchPercentage: number;
 }
@@ -37,6 +43,7 @@ interface Level {
   description?: string;
   descriptionEn?: string;
   requiredPackage?: string;
+  isPublished?: boolean;
   isLocked: boolean;
   lockReason?: string;
   chapters: Chapter[];
@@ -44,11 +51,184 @@ interface Level {
   completedChapters: number;
 }
 
+interface ChapterEditForm {
+  title: string;
+  titleEn: string;
+  description: string;
+  videoDuration: string; // minutes, as text input
+  isPublished: boolean;
+}
+
 export function CourseEditor() {
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedLevels, setExpandedLevels] = useState<string[]>([]);
+  const [togglingPhotos, setTogglingPhotos] = useState<string | null>(null);
+  const [videoChapter, setVideoChapter] = useState<Chapter | null>(null);
+  const [videoInput, setVideoInput] = useState("");
+  const [savingVideo, setSavingVideo] = useState(false);
+  const [editChapter, setEditChapter] = useState<Chapter | null>(null);
+  const [editForm, setEditForm] = useState<ChapterEditForm>({
+    title: "",
+    titleEn: "",
+    description: "",
+    videoDuration: "",
+    isPublished: true,
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [togglingLevel, setTogglingLevel] = useState<string | null>(null);
+
+  const openEditModal = (chapter: Chapter) => {
+    setEditChapter(chapter);
+    setEditForm({
+      title: chapter.title,
+      titleEn: chapter.titleEn || "",
+      description: chapter.description || "",
+      videoDuration: String(Math.round(chapter.videoDuration / 60)),
+      isPublished: chapter.isPublished !== false,
+    });
+  };
+
+  const saveChapterEdit = async () => {
+    if (!editChapter || !editForm.title.trim()) return;
+    setSavingEdit(true);
+    try {
+      const durationMinutes = parseInt(editForm.videoDuration, 10);
+      const response = await fetch(`/api/admin/chapters/${editChapter.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editForm.title.trim(),
+          titleEn: editForm.titleEn.trim() || null,
+          description: editForm.description.trim() || null,
+          videoDuration: Number.isFinite(durationMinutes)
+            ? Math.max(0, durationMinutes) * 60
+            : undefined,
+          isPublished: editForm.isPublished,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update chapter");
+      }
+
+      const data = await response.json();
+      setLevels((prev) =>
+        prev.map((level) => ({
+          ...level,
+          chapters: level.chapters.map((ch) =>
+            ch.id === editChapter.id
+              ? {
+                  ...ch,
+                  title: data.chapter.title,
+                  titleEn: data.chapter.titleEn || undefined,
+                  description: data.chapter.description || undefined,
+                  videoDuration: data.chapter.videoDuration,
+                  isPublished: data.chapter.isPublished,
+                }
+              : ch
+          ),
+        }))
+      );
+      setEditChapter(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update chapter");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const toggleLevelPublished = async (level: Level) => {
+    setTogglingLevel(level.id);
+    try {
+      const response = await fetch(`/api/admin/levels/${level.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublished: !level.isPublished }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update level");
+      }
+
+      setLevels((prev) =>
+        prev.map((l) =>
+          l.id === level.id ? { ...l, isPublished: !level.isPublished } : l
+        )
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update level");
+    } finally {
+      setTogglingLevel(null);
+    }
+  };
+
+  const saveVideo = async () => {
+    if (!videoChapter) return;
+    setSavingVideo(true);
+    try {
+      const response = await fetch(`/api/admin/chapters/${videoChapter.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrl: videoInput.trim() || null }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update video");
+      }
+
+      const hasVideo = !!videoInput.trim();
+      setLevels((prev) =>
+        prev.map((level) => ({
+          ...level,
+          chapters: level.chapters.map((ch) =>
+            ch.id === videoChapter.id ? { ...ch, hasVideo } : ch
+          ),
+        }))
+      );
+      setVideoChapter(null);
+      setVideoInput("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update video");
+    } finally {
+      setSavingVideo(false);
+    }
+  };
+
+  const toggleRequiresPhotos = async (chapter: Chapter) => {
+    setTogglingPhotos(chapter.id);
+    try {
+      const response = await fetch(`/api/admin/chapters/${chapter.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requiresPhotos: !chapter.requiresPhotos }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update chapter");
+      }
+
+      setLevels((prev) =>
+        prev.map((level) => ({
+          ...level,
+          chapters: level.chapters.map((ch) =>
+            ch.id === chapter.id
+              ? { ...ch, requiresPhotos: !chapter.requiresPhotos }
+              : ch
+          ),
+        }))
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update chapter");
+    } finally {
+      setTogglingPhotos(null);
+    }
+  };
 
   const fetchLevels = useCallback(async () => {
     try {
@@ -144,9 +324,9 @@ export function CourseEditor() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {level.isLocked && (
-                  <Badge variant="outline" size="sm">
-                    Zaključano
+                {level.isPublished === false && (
+                  <Badge variant="warning" size="sm">
+                    Skriveno
                   </Badge>
                 )}
                 {level.requiredPackage === "advanced" && (
@@ -159,10 +339,22 @@ export function CourseEditor() {
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    // TODO: Open edit level modal
+                    toggleLevelPublished(level);
                   }}
+                  disabled={togglingLevel === level.id}
+                  title={
+                    level.isPublished === false
+                      ? "Objavi razinu (vidljiva studentima)"
+                      : "Sakrij razinu od studenata"
+                  }
                 >
-                  <Edit2 className="h-4 w-4" />
+                  {togglingLevel === level.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : level.isPublished === false ? (
+                    <EyeOff className="h-4 w-4 text-warning" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-success" />
+                  )}
                 </Button>
               </div>
             </button>
@@ -177,8 +369,18 @@ export function CourseEditor() {
                   >
                     <GripVertical className="h-5 w-5 text-gray-300 cursor-grab" />
 
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                      <Video className="h-5 w-5 text-gray-400" />
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        chapter.hasVideo
+                          ? "bg-success/10"
+                          : "bg-gray-100"
+                      }`}
+                    >
+                      <Video
+                        className={`h-5 w-5 ${
+                          chapter.hasVideo ? "text-success" : "text-gray-400"
+                        }`}
+                      />
                     </div>
 
                     <div className="flex-1">
@@ -192,6 +394,21 @@ export function CourseEditor() {
                             Pregled
                           </Badge>
                         )}
+                        {chapter.requiresPhotos && (
+                          <Badge variant="secondary" size="sm">
+                            Fotografije rada
+                          </Badge>
+                        )}
+                        {!chapter.hasVideo && (
+                          <Badge variant="warning" size="sm">
+                            Bez videa
+                          </Badge>
+                        )}
+                        {chapter.isPublished === false && (
+                          <Badge variant="outline" size="sm">
+                            Neobjavljeno
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
@@ -200,8 +417,47 @@ export function CourseEditor() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          // TODO: Open edit chapter modal
+                          setVideoChapter(chapter);
+                          setVideoInput("");
                         }}
+                        title={
+                          chapter.hasVideo
+                            ? "Promijeni video (Mux playback ID)"
+                            : "Dodaj video (Mux playback ID)"
+                        }
+                        className={
+                          chapter.hasVideo ? "text-success hover:bg-success/10" : "text-gray-400"
+                        }
+                      >
+                        <Video className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleRequiresPhotos(chapter)}
+                        disabled={togglingPhotos === chapter.id}
+                        title={
+                          chapter.requiresPhotos
+                            ? "Isključi obavezne fotografije rada"
+                            : "Uključi obavezne fotografije rada"
+                        }
+                        className={
+                          chapter.requiresPhotos
+                            ? "text-secondary hover:bg-secondary/10"
+                            : "text-gray-400"
+                        }
+                      >
+                        {togglingPhotos === chapter.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Camera className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditModal(chapter)}
+                        title="Uredi poglavlje"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -250,6 +506,114 @@ export function CourseEditor() {
           </div>
         </Card>
       )}
+
+      {/* Chapter edit modal */}
+      <Modal
+        isOpen={!!editChapter}
+        onClose={() => setEditChapter(null)}
+        title={editChapter ? `Uredi: ${editChapter.title}` : ""}
+      >
+        <div className="space-y-4">
+          <Input
+            label="Naslov"
+            value={editForm.title}
+            onChange={(e) =>
+              setEditForm((prev) => ({ ...prev, title: e.target.value }))
+            }
+          />
+          <Input
+            label="Naslov (engleski)"
+            value={editForm.titleEn}
+            onChange={(e) =>
+              setEditForm((prev) => ({ ...prev, titleEn: e.target.value }))
+            }
+          />
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1">
+              Opis
+            </label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+              rows={3}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary"
+            />
+          </div>
+          <Input
+            label="Trajanje videa (minute)"
+            type="number"
+            value={editForm.videoDuration}
+            onChange={(e) =>
+              setEditForm((prev) => ({ ...prev, videoDuration: e.target.value }))
+            }
+          />
+          <label className="flex items-center gap-2 text-sm text-primary">
+            <input
+              type="checkbox"
+              checked={editForm.isPublished}
+              onChange={(e) =>
+                setEditForm((prev) => ({
+                  ...prev,
+                  isPublished: e.target.checked,
+                }))
+              }
+              className="rounded border-gray-300 text-secondary focus:ring-secondary"
+            />
+            Objavljeno (vidljivo studentima)
+          </label>
+        </div>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setEditChapter(null)}>
+            Odustani
+          </Button>
+          <Button
+            onClick={saveChapterEdit}
+            disabled={savingEdit || !editForm.title.trim()}
+          >
+            {savingEdit ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : null}
+            Spremi
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Video (Mux playback ID) modal */}
+      <Modal
+        isOpen={!!videoChapter}
+        onClose={() => {
+          setVideoChapter(null);
+          setVideoInput("");
+        }}
+        title={videoChapter ? `Video: ${videoChapter.title}` : ""}
+        description="Zalijepite Mux playback ID videa (ili direktni URL za testiranje). Ostavite prazno za uklanjanje videa."
+      >
+        <Input
+          label="Mux playback ID"
+          value={videoInput}
+          onChange={(e) => setVideoInput(e.target.value)}
+          placeholder="npr. DS00Spx1CV902MCtPj5WknGlR102V5HFkDe"
+        />
+        <ModalFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setVideoChapter(null);
+              setVideoInput("");
+            }}
+          >
+            Odustani
+          </Button>
+          <Button onClick={saveVideo} disabled={savingVideo}>
+            {savingVideo ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : null}
+            Spremi
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Add new level */}
       <Button

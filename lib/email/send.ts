@@ -63,6 +63,8 @@ import {
   adminContactNotificationEmail,
   welcomeBoxShippedEmail,
   enrollmentActivationEmail,
+  photoSubmissionApprovedEmail,
+  photoSubmissionRedoEmail,
 } from "./templates";
 
 export async function sendWelcomeEmail(to: string, name: string) {
@@ -169,6 +171,31 @@ export async function sendWelcomeBoxShipped(
     to,
     subject: "Vas Welcome Box je poslan!",
     html: welcomeBoxShippedEmail(name, trackingNumber),
+  });
+}
+
+export async function sendPhotoSubmissionApproved(
+  to: string,
+  name: string,
+  chapterTitle: string
+) {
+  return sendEmail({
+    to,
+    subject: `Vas rad je odobren - ${chapterTitle}`,
+    html: photoSubmissionApprovedEmail(name, chapterTitle),
+  });
+}
+
+export async function sendPhotoSubmissionRedo(
+  to: string,
+  name: string,
+  chapterTitle: string,
+  feedback: string
+) {
+  return sendEmail({
+    to,
+    subject: `Povratna informacija o vasem radu - ${chapterTitle}`,
+    html: photoSubmissionRedoEmail(name, chapterTitle, feedback),
   });
 }
 

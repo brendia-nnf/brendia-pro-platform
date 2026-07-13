@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useProgress } from "@/hooks/useProgress";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/routing";
 import {
   LayoutDashboard,
@@ -21,27 +21,34 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const { getLevelProgress, canAccessCertification } = useProgress();
+  const { levels, canAccessCertification } = useProgress();
   const t = useTranslations("navigation");
+  const locale = useLocale();
 
-  const navItems = [
+  const levelItems = levels
+    .filter((level) => !level.isLocked && level.firstChapterId)
+    .map((level) => ({
+      href: `/tecaj/${level.id}/${level.firstChapterId}`,
+      label: locale === "en" && level.titleEn ? level.titleEn : level.title,
+      icon: BookOpen,
+      levelId: level.id,
+      progress: level.progressPercentage,
+    }));
+
+  const navItems: Array<{
+    href: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    levelId?: string;
+    progress?: number;
+    requiresCertification?: boolean;
+  }> = [
     {
       href: "/dashboard",
       label: t("dashboard"),
       icon: LayoutDashboard,
     },
-    {
-      href: "/tecaj/level-1/ch-1-1",
-      label: t("level1"),
-      icon: BookOpen,
-      levelId: "level-1",
-    },
-    {
-      href: "/tecaj/level-2/ch-2-1",
-      label: t("level2"),
-      icon: BookOpen,
-      levelId: "level-2",
-    },
+    ...levelItems,
     {
       href: "/webshop",
       label: t("webshop"),
@@ -99,13 +106,11 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
               (item.levelId && pathname.includes(item.levelId));
 
             // Check if certification link should be hidden
-            if (item.requiresCertification && !canAccessCertification()) {
+            if (item.requiresCertification && !canAccessCertification) {
               return null;
             }
 
-            const progress = item.levelId
-              ? getLevelProgress(item.levelId)
-              : null;
+            const progress = item.progress ?? null;
 
             return (
               <Link

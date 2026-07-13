@@ -13,7 +13,7 @@ import {
 import { Award } from "lucide-react";
 
 export default function DashboardPage() {
-  const { canAccessCertification } = useProgress();
+  const { isCertificationEligible } = useProgress();
   const t = useTranslations("dashboard");
 
   return (
@@ -38,8 +38,8 @@ export default function DashboardPage() {
           <ProgressOverview />
         </section>
 
-        {/* Certification CTA - only show when eligible */}
-        {canAccessCertification() && (
+        {/* Certification CTA - only show when eligible and not yet applied */}
+        {isCertificationEligible && (
           <Card
             variant="elevated"
             padding="lg"
@@ -74,7 +74,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-heading font-semibold text-primary mb-4">
             {t("kit.title")}
           </h2>
-          <KitStatus status="shipped" />
+          <KitStatus />
         </section>
       </div>
     </Container>

@@ -1,6 +1,6 @@
 # Brendia Pro - Unified Project Status
 
-**Last Updated:** July 9, 2026
+**Last Updated:** July 13, 2026
 
 ---
 
@@ -97,6 +97,13 @@ BrendiaPro/
 | Task | Project | Notes | Status |
 |------|---------|-------|--------|
 | Run master migration in Supabase | All | `000_master_migration.sql` + `009_fix_admin_fk_relationships.sql` | ✅ Done |
+| **Run migration 010 in Supabase** | Platform | `010_photo_submissions.sql` (photo submissions feature) | ✅ Done |
+| **Run migration 011 in Supabase** | Platform | `011_kit_status.sql` (kit status fields) | ✅ Done |
+| **Run migration 012 in Supabase** | Platform | `012_course_restructure.sql` (Artist 8ch / Advanced) | ⏳ To do |
+| Verify `NEXT_PUBLIC_APP_URL` on Vercel | Platform | Needed for correct Monri success/callback URLs | ⏳ To do |
+| Configure Mux credentials | Platform | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET`, `MUX_SIGNING_KEY`, `MUX_SIGNING_KEY_ID` in Vercel | ⏳ To do |
+| Upload course videos to Mux | Platform | Signed playback policy; paste playback IDs in `/admin/sadrzaj` | ⏳ To do |
+| Mark practical chapters in admin | Platform | Toggle "Fotografije rada" per chapter in `/admin/sadrzaj` | ⏳ After 010 |
 | Configure Monri credentials | Marketing | `MONRI_MERCHANT_KEY`, etc. | ✅ Done (test mode) |
 | Configure Resend API key | All | For email sending | ✅ Done |
 | Deploy marketing site to Vercel | Marketing | Connect GitHub, add env vars | ✅ Done |
@@ -138,6 +145,7 @@ BrendiaPro/
 | Task | Notes |
 |------|-------|
 | Connect to real API | Replace `useMockData = true` |
+| Photo submission flow | 3-photo upload after practical chapters (gate is enforced server-side, so app must handle 403 `photos_required` from progress API) |
 | Token refresh interceptor | For API client |
 | `flutter_secure_storage` | Token persistence |
 | Real video URL handling | From Mux |
@@ -286,6 +294,121 @@ cd brendia_pro_app && flutter run -d "iPhone"
 ngrok http 3000
 # Then configure callback URL in Monri portal
 ```
+
+---
+
+## Recent Changes (July 13, 2026 — part 3)
+
+### Course Restructure: Artist / Advanced
+- **Migration `012_course_restructure.sql`** (⏳ RUN IN SUPABASE):
+  - Level 1 = **Brendia Pro® Artist** (basic, 8 chapters — one per filmed video;
+    old L2's first 3 chapters merged in, rest deleted).
+  - Level 2 = **Advanced Brendia Pro® Artist** (advanced package), **unpublished**
+    until its videos are filmed (publish via the eye toggle in /admin/sadrzaj).
+  - Certification eligibility is now package-based: all published chapters in
+    basic-package levels watched + photo sets approved.
+- Platform access checks are now `required_package`-based (no more hardcoded
+  "level 3 = advanced"), so levels can be added/renumbered freely.
+- Admin course editor: chapter **edit modal** (title/EN title/description/
+  duration/publish), level **publish toggle** (eye icon), plus existing video +
+  photo toggles. Admins see unpublished levels/chapters; students never do.
+
+### Advanced Purchase Gating (marketing site)
+- `/api/checkout`: **master-certification is rejected unless the buyer's email
+  belongs to a platform account with an APPROVED certification** (Croatian
+  error message shown in the checkout form).
+- Monri callback: Advanced purchases **skip the activation flow** — the
+  advanced enrollment is created directly on the existing account and the
+  student gets an "access unlocked" email (no password reset).
+- Course display names renamed everywhere: Foundation Certification →
+  "Brendia Pro® Artist", Master Certification → "Advanced Brendia Pro® Artist"
+  (course IDs unchanged for data continuity).
+
+### Monri Single-URL Problem — Solved Properly
+- Monri's dashboard allows only ONE success URL and ONE callback URL per
+  merchant. Fixes:
+  - Both sites now send **`success_url_override` / `cancel_url_override`**
+    per transaction (Monri ignores plain `success_url`), so platform webshop
+    buyers return to the platform and course buyers to the marketing site.
+  - The dashboard callback URL stays pointed at the **marketing site**
+    (`/api/monri/callback`). Orders it doesn't recognize (webshop, `BW-...`
+    prefix — new) are **forwarded to the platform callback** as JSON, signed
+    with SHA512(merchant_key + body) in an `x-forward-digest` header; the
+    platform callback verifies the signature before processing.
+  - Platform webshop order numbers now use the `BW-` prefix (was `BP-`,
+    colliding with course orders).
+- Email template links (dashboard buttons etc.) are now env-driven
+  (`NEXT_PUBLIC_APP_URL`) instead of hardcoded to app.brendiapro.hr, so
+  test-phase emails link to the Vercel test domain.
+
+### Webshop Success URL Fix
+- `lib/monri/config.ts` now falls back `NEXT_PUBLIC_APP_URL` →
+  `NEXT_PUBLIC_SITE_URL` → localhost. **Verify `NEXT_PUBLIC_APP_URL` is set on
+  the platform's Vercel project** — if it was missing, Monri fell back to the
+  portal-configured (marketing) success URL, and webshop callbacks may have
+  gone to the marketing callback (check for stuck "pending" webshop orders).
+
+---
+
+## Recent Changes (July 13, 2026 — part 2)
+
+### Mock Data Eliminated (student side is now fully real)
+- `useProgress` hook rewired to `/api/progress` + `/api/certification` +
+  `/api/course/levels`. Dashboard progress cards, sidebar level links (now real
+  UUIDs — old links pointed to nonexistent mock IDs), and the certification
+  banner (only shows when status is `eligible`) are all data-driven.
+- Profile: DeviceManagement → `/api/user/devices` (with real logout),
+  PurchaseHistory → `/api/user/purchases` (course-id name map fixed to real ids).
+- `lib/mock-data/` **deleted** — nothing imports it anymore.
+
+### Mux Playback Ready
+- Chapter API now generates **signed, expiring Mux HLS URLs** from stored
+  playback IDs (`generateSignedPlaybackUrl`, viewer_id = user id). Direct
+  http(s) URLs still pass through for testing.
+- VideoPlayer supports HLS via lazy-loaded `hls.js` (Chrome/Firefox; Safari native).
+- Admin: video icon per chapter in `/admin/sadrzaj` opens a modal to paste the
+  Mux playback ID; "Bez videa" badge marks chapters without video.
+- **To go live with videos:** create Mux account → set 4 MUX_* env vars in
+  Vercel → upload videos (signed playback policy) → paste playback IDs in admin.
+
+### Kit Status (real, admin-managed)
+- **Migration `011_kit_status.sql`** (⏳ RUN IN SUPABASE): `kit_status`,
+  `kit_tracking_number`, `kit_shipped_at` on enrollments.
+- Student dashboard kit card now fetches `/api/user/kit` (was hardcoded "shipped");
+  shows tracking number; hidden when no enrollment.
+- Admin: Kit column in `/admin/studenti` with modal (status + tracking number);
+  setting "Poslan" emails the student (`welcomeBoxShippedEmail`).
+
+---
+
+## Recent Changes (July 13, 2026)
+
+### Photo Submissions (Student Work) — NEW FEATURE
+After each **practical** chapter, students must submit 3 photos of their work
+(front, left, right) before the next chapter unlocks. Nikolina reviews each
+submission (approve / request redo with feedback). Certification eligibility
+now also requires all required photo sets to be **approved**.
+
+- **Migration `010_photo_submissions.sql`** (⏳ RUN IN SUPABASE): `photo_submissions`
+  table, `chapters.requires_photos` flag, private `student-work` storage bucket,
+  `can_start_chapter()` gate function, updated `update_certification_eligibility()`.
+- **Student APIs:** `POST /api/photo-submissions/upload` (private bucket, signed
+  URLs), `GET/POST /api/photo-submissions`. Sequential unlock now enforced
+  **server-side** in `POST /api/progress/[chapterId]` (mobile app can't bypass).
+- **Admin APIs:** `GET /api/admin/photo-submissions` (queue),
+  `PATCH /api/admin/photo-submissions/[id]` (approve/redo + Resend email to
+  student), `PATCH /api/admin/chapters/[id]` (toggle `requiresPhotos`).
+- **Student UI:** course player (`/tecaj/...`) rewired from mock data to real
+  course/progress APIs; new `PhotoSubmissionPanel` (3 camera slots, status
+  banners, redo feedback); photo-aware `CompletionModal`; new sidebar chapter
+  states (awaiting photos / in review / redo requested).
+- **Admin UI:** new `/admin/radovi` page (pending/approved/redo tabs, review
+  modal with 3 photos side-by-side + attempt history); camera toggle per
+  chapter in course editor (`/admin/sadrzaj`).
+- **After running the migration:** toggle "Fotografije rada" ON for each
+  practical chapter in `/admin/sadrzaj` (defaults to off for all chapters).
+- Note: dashboard progress widgets (`useProgress` hook) still use mock data —
+  pre-existing gap, next candidate for rewiring.
 
 ---
 

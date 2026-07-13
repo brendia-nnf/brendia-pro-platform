@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
           package,
           status,
           purchased_at,
-          expires_at
+          expires_at,
+          kit_status,
+          kit_tracking_number
         ),
         certifications (
           status
@@ -86,6 +88,8 @@ export async function GET(request: NextRequest) {
         status: string;
         purchased_at: string;
         expires_at: string | null;
+        kit_status: string | null;
+        kit_tracking_number: string | null;
       }> | null;
       certifications: Array<{
         status: string;
@@ -130,11 +134,14 @@ export async function GET(request: NextRequest) {
         createdAt: p.created_at,
         enrollment: activeEnrollment
           ? {
+              id: activeEnrollment.id,
               courseId: activeEnrollment.course_id,
               package: activeEnrollment.package,
               status: activeEnrollment.status,
               purchasedAt: activeEnrollment.purchased_at,
               expiresAt: activeEnrollment.expires_at,
+              kitStatus: activeEnrollment.kit_status || "preparing",
+              kitTrackingNumber: activeEnrollment.kit_tracking_number,
             }
           : null,
         certificationStatus: p.certifications?.[0]?.status || "not_eligible",

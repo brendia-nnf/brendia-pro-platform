@@ -1,29 +1,32 @@
 "use client";
 
-import { useProgress } from "@/hooks/useProgress";
 import { ChapterCard } from "./ChapterCard";
 import { Progress } from "@/components/ui";
-import type { Level, Chapter } from "@/lib/types";
+import type { Chapter, ChapterStatus } from "@/lib/types";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChapterSidebarProps {
-  level: Level;
+  levelId: string;
+  levelTitle: string;
+  levelProgress: number;
+  chapters: Chapter[];
+  statuses: ChapterStatus[];
   currentChapterId: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function ChapterSidebar({
-  level,
+  levelId,
+  levelTitle,
+  levelProgress,
+  chapters,
+  statuses,
   currentChapterId,
   isOpen,
   onClose,
 }: ChapterSidebarProps) {
-  const { getChapterStatuses, getLevelProgress } = useProgress();
-  const statuses = getChapterStatuses(level.id);
-  const levelProgress = getLevelProgress(level.id);
-
   return (
     <>
       {/* Mobile overlay */}
@@ -45,7 +48,7 @@ export function ChapterSidebar({
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-heading font-semibold text-primary">
-              {level.title}
+              {levelTitle}
             </h2>
             <button
               onClick={onClose}
@@ -60,14 +63,14 @@ export function ChapterSidebar({
 
         {/* Chapter list */}
         <div className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-140px)]">
-          {level.chapters.map((chapter, index) => {
+          {chapters.map((chapter, index) => {
             const status = statuses[index];
             return (
               <ChapterCard
                 key={chapter.id}
                 chapter={chapter}
                 status={status}
-                levelId={level.id}
+                levelId={levelId}
                 isActive={chapter.id === currentChapterId}
               />
             );

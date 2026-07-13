@@ -1,17 +1,62 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, Badge } from "@/components/ui";
 import { useTranslations } from "next-intl";
-import { Package, Truck, CheckCircle2 } from "lucide-react";
+import { Package, Truck, CheckCircle2, Loader2 } from "lucide-react";
 
 type KitStatusType = "preparing" | "shipped" | "delivered";
 
-interface KitStatusProps {
-  status?: KitStatusType;
+interface KitData {
+  status: KitStatusType;
+  trackingNumber: string | null;
+  shippedAt: string | null;
 }
 
-export function KitStatus({ status = "shipped" }: KitStatusProps) {
+export function KitStatus() {
+  const [kit, setKit] = useState<KitData | null>(null);
+  const [loading, setLoading] = useState(true);
   const t = useTranslations("dashboard.kit");
+
+  useEffect(() => {
+    const fetchKit = async () => {
+      try {
+        const response = await fetch("/api/user/kit");
+        if (response.ok) {
+          const data = await response.json();
+          if (
+            data.kit &&
+            ["preparing", "shipped", "delivered"].includes(data.kit.status)
+          ) {
+            setKit(data.kit);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch kit status:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchKit();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card variant="default" padding="lg">
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+        </div>
+      </Card>
+    );
+  }
+
+  // No active enrollment - nothing to show
+  if (!kit) {
+    return null;
+  }
+
+  const status = kit.status;
 
   const statuses = {
     preparing: {
@@ -63,6 +108,15 @@ export function KitStatus({ status = "shipped" }: KitStatusProps) {
             </Badge>
           </div>
           <p className="text-sm text-gray-600 mb-4">{currentStatus.description}</p>
+
+          {status === "shipped" && kit.trackingNumber && (
+            <p className="text-sm text-gray-600 mb-4">
+              {t("trackingNumber")}:{" "}
+              <span className="font-medium text-primary">
+                {kit.trackingNumber}
+              </span>
+            </p>
+          )}
 
           {/* Progress steps */}
           <div className="flex items-center gap-2">

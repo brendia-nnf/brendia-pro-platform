@@ -2,6 +2,7 @@ export { StatsCards } from "./StatsCards";
 export { StudentTable } from "./StudentTable";
 export { CourseEditor } from "./CourseEditor";
 export { CertificationQueue } from "./CertificationQueue";
+export { PhotoReviewQueue } from "./PhotoReviewQueue";
 export { CouponTable } from "./CouponTable";
 export { OrdersTable } from "./OrdersTable";
 export { ProductsTable } from "./ProductsTable";

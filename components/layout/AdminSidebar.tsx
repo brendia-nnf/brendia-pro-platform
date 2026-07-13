@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
+  Camera,
   Award,
   Ticket,
   ShoppingBag,
@@ -36,6 +37,11 @@ const adminNavItems = [
     href: "/admin/sadrzaj",
     label: "Sadržaj tečaja",
     icon: BookOpen,
+  },
+  {
+    href: "/admin/radovi",
+    label: "Radovi studenata",
+    icon: Camera,
   },
   {
     href: "/admin/certifikati",

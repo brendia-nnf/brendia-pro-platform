@@ -49,7 +49,9 @@ export function generateOrderNumber(): string {
     randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
-  return `BP-${datePart}-${randomPart}`;
+  // BW = Brendia Webshop; distinguishes webshop orders from the marketing
+  // site's course orders (BP-) since both share one Monri account
+  return `BW-${datePart}-${randomPart}`;
 }
 
 /**
@@ -107,9 +109,11 @@ export interface MonriFormData {
   digest: string;
   transaction_type: "purchase" | "authorize";
 
-  // URLs
-  success_url: string;
-  cancel_url: string;
+  // URLs (Monri only honors the *_override params per transaction;
+  // plain success_url/cancel_url are ignored in favor of the merchant
+  // dashboard configuration)
+  success_url_override: string;
+  cancel_url_override: string;
   callback_url: string;
 
   // Customer info
@@ -167,7 +171,10 @@ export function buildMonriFormData(params: MonriFormParams): MonriFormData {
     cancelPath = "/webshop/kosarica",
   } = params;
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000";
   const digest = calculateFormDigest(orderNumber, amount, currency);
 
   return {
@@ -178,8 +185,8 @@ export function buildMonriFormData(params: MonriFormParams): MonriFormData {
     digest,
     transaction_type: "purchase",
 
-    success_url: `${baseUrl}${successPath}?order_number=${orderNumber}`,
-    cancel_url: `${baseUrl}${cancelPath}?order_number=${orderNumber}`,
+    success_url_override: `${baseUrl}${successPath}?order_number=${orderNumber}`,
+    cancel_url_override: `${baseUrl}${cancelPath}?order_number=${orderNumber}`,
     callback_url: `${baseUrl}/api/monri/callback`,
 
     ch_full_name: customerName,

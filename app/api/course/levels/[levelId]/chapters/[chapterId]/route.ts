@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
+import { generateSignedPlaybackUrl } from "@/lib/mux/client";
 
 // GET - Fetch single chapter with video access
 export async function GET(
@@ -26,6 +27,7 @@ export async function GET(
       video_duration: number | null;
       video_thumbnail_url: string | null;
       is_preview: boolean;
+      requires_photos: boolean;
       level: {
         id: string;
         level_number: number;
@@ -84,10 +86,9 @@ export async function GET(
       enrollment = enrollmentData;
 
       if (enrollment) {
-        const levelNum = chapter.level?.level_number || 1;
-        if (levelNum <= 2) {
+        if (chapter.level?.required_package !== "advanced") {
           hasAccess = true;
-        } else if (levelNum === 3 && enrollment.package === "advanced") {
+        } else if (enrollment.package === "advanced") {
           hasAccess = true;
         }
       }
@@ -122,6 +123,7 @@ export async function GET(
       videoDuration: chapter.video_duration,
       thumbnailUrl: chapter.video_thumbnail_url,
       isPreview: chapter.is_preview,
+      requiresPhotos: chapter.requires_photos,
       hasAccess,
       level: chapter.level
         ? {
@@ -134,12 +136,15 @@ export async function GET(
 
     // Include video URL only if user has access
     if (hasAccess && chapter.video_url) {
-      // For Mux, generate a signed URL
-      // For direct URLs, just return them
-      response.videoUrl = chapter.video_url;
-
-      // If using Mux, would generate signed playback URL here
-      // response.videoUrl = await generateMuxSignedUrl(chapter.video_url);
+      if (chapter.video_url.startsWith("http")) {
+        // Direct file URL (e.g. test/dev videos) - pass through
+        response.videoUrl = chapter.video_url;
+      } else {
+        // Mux playback ID - generate a signed, expiring HLS URL
+        response.videoUrl = generateSignedPlaybackUrl(chapter.video_url, {
+          userId: user?.id,
+        });
+      }
     }
 
     // Include progress if available
@@ -150,6 +155,64 @@ export async function GET(
         lastPosition: progress.last_position,
         watchTime: progress.watch_time,
       };
+    }
+
+    // Include latest photo submission for practical chapters
+    if (user && chapter.requires_photos) {
+      interface SubmissionRow {
+        id: string;
+        attempt_number: number;
+        photo_front_path: string;
+        photo_left_path: string;
+        photo_right_path: string;
+        status: string;
+        feedback: string | null;
+        submitted_at: string;
+        reviewed_at: string | null;
+      }
+
+      const { data: submission } = await supabase
+        .from("photo_submissions")
+        .select(
+          "id, attempt_number, photo_front_path, photo_left_path, photo_right_path, status, feedback, submitted_at, reviewed_at"
+        )
+        .eq("user_id", user.id)
+        .eq("chapter_id", chapterId)
+        .order("attempt_number", { ascending: false })
+        .limit(1)
+        .maybeSingle() as { data: SubmissionRow | null };
+
+      if (submission) {
+        const adminClient = createAdminClient();
+        const { data: signed } = await adminClient.storage
+          .from("student-work")
+          .createSignedUrls(
+            [
+              submission.photo_front_path,
+              submission.photo_left_path,
+              submission.photo_right_path,
+            ],
+            3600
+          );
+
+        const urlByPath = new Map(
+          (signed || []).map((s) => [s.path, s.signedUrl])
+        );
+
+        response.photoSubmission = {
+          id: submission.id,
+          attemptNumber: submission.attempt_number,
+          photoFrontUrl: urlByPath.get(submission.photo_front_path) || null,
+          photoLeftUrl: urlByPath.get(submission.photo_left_path) || null,
+          photoRightUrl: urlByPath.get(submission.photo_right_path) || null,
+          status: submission.status,
+          feedback: submission.feedback,
+          submittedAt: submission.submitted_at,
+          reviewedAt: submission.reviewed_at,
+        };
+      } else {
+        response.photoSubmission = null;
+      }
     }
 
     interface AdjacentChapterRow {

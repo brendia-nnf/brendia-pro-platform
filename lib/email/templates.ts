@@ -1,4 +1,11 @@
 // Base email template wrapper
+// Platform base URL for email links (env-driven so test deployments
+// don't send students to the production domain)
+const PLATFORM_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://app.brendiapro.hr";
+
 export function baseTemplate(content: string): string {
   return `
 <!DOCTYPE html>
@@ -124,7 +131,7 @@ export function welcomeEmail(name: string): string {
         <li>Mogucnost certificiranja</li>
       </ul>
     </div>
-    <a href="https://app.brendiapro.hr/hr/dashboard" class="button">Pristupite platformi</a>
+    <a href="${PLATFORM_URL}/hr/dashboard" class="button">Pristupite platformi</a>
     <p>Ako imate bilo kakvih pitanja, slobodno nas kontaktirajte.</p>
     <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
   `);
@@ -172,7 +179,7 @@ export function purchaseConfirmationEmail(
       <p>Iznos: ${price}</p>
     </div>
     <p>Mozete odmah poceti s ucenjem pristupom nasoj platformi.</p>
-    <a href="https://app.brendiapro.hr/hr/dashboard" class="button">Pocni uciti</a>
+    <a href="${PLATFORM_URL}/hr/dashboard" class="button">Pocni uciti</a>
     <div class="divider"></div>
     <p><strong>Sto slijedi:</strong></p>
     <ul>
@@ -217,7 +224,7 @@ export function certificationRejectedEmail(name: string, reason: string): string
       <p>${reason}</p>
     </div>
     <p>Molimo vas da pregledate materijale i pokusate ponovno kada budete spremni. Ako imate pitanja, slobodno nas kontaktirajte.</p>
-    <a href="https://app.brendiapro.hr/hr/tecaj" class="button">Nastavi ucenje</a>
+    <a href="${PLATFORM_URL}/hr/tecaj" class="button">Nastavi ucenje</a>
     <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
   `);
 }
@@ -264,7 +271,7 @@ export function welcomeBoxShippedEmail(name: string, trackingNumber: string): st
     </div>
     <p>Ocekivano vrijeme dostave je 3-5 radnih dana.</p>
     <p>U medjuvremenu, mozete poceti s online lekcijama na nasoj platformi.</p>
-    <a href="https://app.brendiapro.hr/hr/dashboard" class="button">Nastavi ucenje</a>
+    <a href="${PLATFORM_URL}/hr/dashboard" class="button">Nastavi ucenje</a>
     <p>Srdacan pozdrav,<br>Brendia Pro tim</p>
   `);
 }
@@ -294,6 +301,41 @@ export function enrollmentActivationEmail(
     </ul>
     <p style="font-size: 12px; color: #666;">Link za aktivaciju istjece za 7 dana. Ako link istekne, kontaktirajte nas za novi.</p>
     <div class="divider"></div>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+  `);
+}
+
+// Photo submission approved
+export function photoSubmissionApprovedEmail(
+  name: string,
+  chapterTitle: string
+): string {
+  return baseTemplate(`
+    <h1>Vas rad je odobren!</h1>
+    <p>Draga ${name},</p>
+    <p>Nikolina je pregledala fotografije vaseg rada za poglavlje <strong>${chapterTitle}</strong> i rad je <strong>odobren</strong>!</p>
+    <p>Nastavite s odlicnim radom - svaki odobreni rad priblizava vas certifikaciji.</p>
+    <a href="${PLATFORM_URL}/hr/dashboard" class="button">Nastavi ucenje</a>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+  `);
+}
+
+// Photo submission redo requested
+export function photoSubmissionRedoEmail(
+  name: string,
+  chapterTitle: string,
+  feedback: string
+): string {
+  return baseTemplate(`
+    <h1>Povratna informacija o vasem radu</h1>
+    <p>Draga ${name},</p>
+    <p>Nikolina je pregledala fotografije vaseg rada za poglavlje <strong>${chapterTitle}</strong> i zamolila bi vas da rad ponovite.</p>
+    <div class="highlight">
+      <p><strong>Nikolinina povratna informacija:</strong></p>
+      <p>${feedback}</p>
+    </div>
+    <p>Ne brinite - ovo je normalan dio ucenja! Pogledajte video ponovno, primijenite povratnu informaciju i posaljite nove fotografije (sprijeda, s lijeve i desne strane).</p>
+    <a href="${PLATFORM_URL}/hr/dashboard" class="button">Posalji nove fotografije</a>
     <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
   `);
 }

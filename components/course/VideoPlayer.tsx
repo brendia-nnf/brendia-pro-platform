@@ -73,6 +73,40 @@ export function VideoPlayer({
     return () => clearTimeout(timeout);
   }, [isPlaying, showControls]);
 
+  // Attach the video source. Mux serves HLS (.m3u8), which only Safari
+  // plays natively - other browsers need hls.js (loaded on demand).
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl) return;
+
+    const isHlsSource = videoUrl.includes(".m3u8");
+
+    if (!isHlsSource || video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = videoUrl;
+      return;
+    }
+
+    let hls: import("hls.js").default | null = null;
+    let cancelled = false;
+
+    import("hls.js").then(({ default: Hls }) => {
+      if (cancelled || !videoRef.current) return;
+      if (Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(videoUrl);
+        hls.attachMedia(videoRef.current);
+      } else {
+        // Last resort: let the browser try the URL directly
+        videoRef.current.src = videoUrl;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      hls?.destroy();
+    };
+  }, [videoUrl]);
+
   // Handle video events
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current;
@@ -292,7 +326,6 @@ export function VideoPlayer({
       <video
         ref={videoRef}
         className="w-full h-full object-contain"
-        src={videoUrl}
         poster={thumbnailUrl}
         playsInline
         onTimeUpdate={handleTimeUpdate}

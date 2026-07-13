@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Badge, Button, Input, Avatar } from "@/components/ui";
+import { Card, Badge, Button, Input, Avatar, Modal, ModalFooter } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
-import { Search, MoreVertical, Eye, RefreshCw, Loader2 } from "lucide-react";
+import { Search, MoreVertical, Eye, RefreshCw, Loader2, Package } from "lucide-react";
+
+type KitStatusValue = "preparing" | "shipped" | "delivered";
 
 interface Student {
   id: string;
@@ -12,14 +14,29 @@ interface Student {
   phone?: string;
   createdAt: string;
   enrollment: {
+    id: string;
     courseId: string;
     package: "basic" | "advanced";
     status: string;
     purchasedAt: string;
     expiresAt?: string;
+    kitStatus: KitStatusValue;
+    kitTrackingNumber?: string | null;
   } | null;
   certificationStatus: string;
 }
+
+const KIT_LABELS: Record<KitStatusValue, string> = {
+  preparing: "U pripremi",
+  shipped: "Poslan",
+  delivered: "Dostavljen",
+};
+
+const KIT_BADGES: Record<KitStatusValue, "warning" | "secondary" | "success"> = {
+  preparing: "warning",
+  shipped: "secondary",
+  delivered: "success",
+};
 
 interface Pagination {
   page: number;
@@ -41,6 +58,65 @@ export function StudentTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [kitStudent, setKitStudent] = useState<Student | null>(null);
+  const [kitStatusValue, setKitStatusValue] = useState<KitStatusValue>("preparing");
+  const [kitTracking, setKitTracking] = useState("");
+  const [savingKit, setSavingKit] = useState(false);
+
+  const openKitModal = (student: Student) => {
+    if (!student.enrollment) return;
+    setKitStudent(student);
+    setKitStatusValue(student.enrollment.kitStatus);
+    setKitTracking(student.enrollment.kitTrackingNumber || "");
+  };
+
+  const closeKitModal = () => {
+    setKitStudent(null);
+    setKitTracking("");
+  };
+
+  const saveKitStatus = async () => {
+    if (!kitStudent?.enrollment) return;
+    setSavingKit(true);
+    try {
+      const response = await fetch(
+        `/api/admin/enrollments/${kitStudent.enrollment.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kitStatus: kitStatusValue,
+            trackingNumber: kitTracking.trim(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update kit status");
+      }
+
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === kitStudent.id && s.enrollment
+            ? {
+                ...s,
+                enrollment: {
+                  ...s.enrollment,
+                  kitStatus: kitStatusValue,
+                  kitTrackingNumber: kitTracking.trim() || null,
+                },
+              }
+            : s
+        )
+      );
+      closeKitModal();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update kit status");
+    } finally {
+      setSavingKit(false);
+    }
+  };
 
   // Debounce search
   useEffect(() => {
@@ -172,6 +248,9 @@ export function StudentTable() {
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
                   Certifikacija
                 </th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
+                  Kit
+                </th>
                 <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">
                   Status
                 </th>
@@ -240,6 +319,25 @@ export function StudentTable() {
                             ? "Na pregledu"
                             : "Nije prijavio"}
                     </Badge>
+                  </td>
+                  <td className="py-3 px-4">
+                    {student.enrollment ? (
+                      <button
+                        onClick={() => openKitModal(student)}
+                        className="inline-flex items-center gap-1.5 group"
+                        title="Promijeni status kita"
+                      >
+                        <Badge
+                          variant={KIT_BADGES[student.enrollment.kitStatus]}
+                          size="sm"
+                        >
+                          {KIT_LABELS[student.enrollment.kitStatus]}
+                        </Badge>
+                        <Package className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                      </button>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-center">
                     <Badge
@@ -313,6 +411,60 @@ export function StudentTable() {
           </div>
         </div>
       )}
+
+      {/* Kit status modal */}
+      <Modal
+        isOpen={!!kitStudent}
+        onClose={closeKitModal}
+        title="Status kita"
+        description={
+          kitStudent
+            ? `Brendia Pro Kit za: ${kitStudent.fullName}`
+            : ""
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1">
+              Status
+            </label>
+            <select
+              value={kitStatusValue}
+              onChange={(e) => setKitStatusValue(e.target.value as KitStatusValue)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+            >
+              <option value="preparing">U pripremi</option>
+              <option value="shipped">Poslan</option>
+              <option value="delivered">Dostavljen</option>
+            </select>
+          </div>
+
+          <Input
+            label="Broj za praćenje (opcionalno)"
+            value={kitTracking}
+            onChange={(e) => setKitTracking(e.target.value)}
+            placeholder="npr. HP1234567890"
+          />
+
+          {kitStatusValue === "shipped" &&
+            kitStudent?.enrollment?.kitStatus !== "shipped" && (
+              <p className="text-sm text-gray-500">
+                Studentu će biti poslan email s obavijesti o slanju kita.
+              </p>
+            )}
+        </div>
+        <ModalFooter>
+          <Button variant="outline" onClick={closeKitModal}>
+            Odustani
+          </Button>
+          <Button onClick={saveKitStatus} disabled={savingKit}>
+            {savingKit ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : null}
+            Spremi
+          </Button>
+        </ModalFooter>
+      </Modal>
     </Card>
   );
 }

@@ -57,9 +57,15 @@ export async function GET(request: NextRequest) {
 
     // Combine and format purchases
     const courseNames: Record<string, string> = {
-      foundation: "Brendia Pro Artist",
-      master: "Brendia Pro Master",
-      advanced: "Advanced Brendia Pro Artist",
+      // Actual course_id values used by enrollments (from marketing checkout)
+      "foundation-certification": "Brendia Pro® Artist",
+      "master-certification": "Advanced Brendia Pro® Artist",
+      "brendia-pro-artist-1v1": "Brendia Pro® Artist 1v1",
+      "brendia-pro-master-1v1": "Brendia Pro® Master 1v1",
+      // Legacy short ids (fallback)
+      foundation: "Brendia Pro® Artist",
+      master: "Advanced Brendia Pro® Artist",
+      advanced: "Advanced Brendia Pro® Artist",
     };
 
     const purchases = [
