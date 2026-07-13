@@ -78,6 +78,81 @@ export function CourseEditor() {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [togglingLevel, setTogglingLevel] = useState<string | null>(null);
+  const [addLevel, setAddLevel] = useState<Level | null>(null);
+  const [addForm, setAddForm] = useState<ChapterEditForm>({
+    title: "",
+    titleEn: "",
+    description: "",
+    videoDuration: "",
+    isPublished: true,
+  });
+  const [savingAdd, setSavingAdd] = useState(false);
+  const [deletingChapter, setDeletingChapter] = useState<string | null>(null);
+
+  const saveNewChapter = async () => {
+    if (!addLevel || !addForm.title.trim()) return;
+    setSavingAdd(true);
+    try {
+      const durationMinutes = parseInt(addForm.videoDuration, 10);
+      const response = await fetch("/api/admin/chapters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          levelId: addLevel.id,
+          title: addForm.title.trim(),
+          titleEn: addForm.titleEn.trim() || null,
+          description: addForm.description.trim() || null,
+          videoDuration: Number.isFinite(durationMinutes)
+            ? Math.max(0, durationMinutes) * 60
+            : 0,
+          isPublished: addForm.isPublished,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create chapter");
+      }
+
+      setAddLevel(null);
+      setAddForm({ title: "", titleEn: "", description: "", videoDuration: "", isPublished: true });
+      await fetchLevels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create chapter");
+    } finally {
+      setSavingAdd(false);
+    }
+  };
+
+  const deleteChapter = async (chapter: Chapter) => {
+    const confirmed = window.confirm(
+      `Obrisati poglavlje "${chapter.title}"?\n\nOvo briše i sav napredak studenata te poslane fotografije za ovo poglavlje. Radnja se ne može poništiti.`
+    );
+    if (!confirmed) return;
+
+    setDeletingChapter(chapter.id);
+    try {
+      const response = await fetch(`/api/admin/chapters/${chapter.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete chapter");
+      }
+
+      setLevels((prev) =>
+        prev.map((level) => ({
+          ...level,
+          chapters: level.chapters.filter((ch) => ch.id !== chapter.id),
+        }))
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete chapter");
+    } finally {
+      setDeletingChapter(null);
+    }
+  };
 
   const openEditModal = (chapter: Chapter) => {
     setEditChapter(chapter);
@@ -464,11 +539,15 @@ export function CourseEditor() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          // TODO: Delete chapter with confirmation
-                        }}
+                        onClick={() => deleteChapter(chapter)}
+                        disabled={deletingChapter === chapter.id}
+                        title="Obriši poglavlje"
                       >
-                        <Trash2 className="h-4 w-4 text-error" />
+                        {deletingChapter === chapter.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-error" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -486,7 +565,14 @@ export function CourseEditor() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      // TODO: Open add chapter modal
+                      setAddLevel(level);
+                      setAddForm({
+                        title: "",
+                        titleEn: "",
+                        description: "",
+                        videoDuration: "",
+                        isPublished: true,
+                      });
                     }}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -506,6 +592,79 @@ export function CourseEditor() {
           </div>
         </Card>
       )}
+
+      {/* Add chapter modal */}
+      <Modal
+        isOpen={!!addLevel}
+        onClose={() => setAddLevel(null)}
+        title={addLevel ? `Novo poglavlje: ${addLevel.title}` : ""}
+      >
+        <div className="space-y-4">
+          <Input
+            label="Naslov"
+            value={addForm.title}
+            onChange={(e) =>
+              setAddForm((prev) => ({ ...prev, title: e.target.value }))
+            }
+            placeholder="npr. Priprema prirodne kose"
+          />
+          <Input
+            label="Naslov (engleski)"
+            value={addForm.titleEn}
+            onChange={(e) =>
+              setAddForm((prev) => ({ ...prev, titleEn: e.target.value }))
+            }
+          />
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1">
+              Opis
+            </label>
+            <textarea
+              value={addForm.description}
+              onChange={(e) =>
+                setAddForm((prev) => ({ ...prev, description: e.target.value }))
+              }
+              rows={3}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary"
+            />
+          </div>
+          <Input
+            label="Trajanje videa (minute)"
+            type="number"
+            value={addForm.videoDuration}
+            onChange={(e) =>
+              setAddForm((prev) => ({ ...prev, videoDuration: e.target.value }))
+            }
+          />
+          <label className="flex items-center gap-2 text-sm text-primary">
+            <input
+              type="checkbox"
+              checked={addForm.isPublished}
+              onChange={(e) =>
+                setAddForm((prev) => ({ ...prev, isPublished: e.target.checked }))
+              }
+              className="rounded border-gray-300 text-secondary focus:ring-secondary"
+            />
+            Objavljeno (vidljivo studentima)
+          </label>
+        </div>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setAddLevel(null)}>
+            Odustani
+          </Button>
+          <Button
+            onClick={saveNewChapter}
+            disabled={savingAdd || !addForm.title.trim()}
+          >
+            {savingAdd ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4 mr-2" />
+            )}
+            Dodaj poglavlje
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Chapter edit modal */}
       <Modal

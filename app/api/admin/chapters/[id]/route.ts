@@ -143,3 +143,56 @@ export async function PATCH(
     );
   }
 }
+
+// DELETE - Delete a chapter (admin only). Cascades progress and photo
+// submissions for this chapter via FK constraints.
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: chapterId } = await params;
+    const supabase = await createServerSupabaseClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single() as { data: { role: string } | null };
+
+    if (profile?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const adminClient = createAdminClient();
+    const { error: deleteError } = await adminClient
+      .from("chapters")
+      .delete()
+      .eq("id", chapterId);
+
+    if (deleteError) {
+      console.error("Delete chapter error:", deleteError);
+      return NextResponse.json(
+        { error: "Failed to delete chapter" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete chapter error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
