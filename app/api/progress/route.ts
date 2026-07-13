@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       p_user_id: user.id,
     } as never) as { data: LastWatchedRow[] | null };
 
-    // Calculate overall progress
+    // Calculate overall progress (watch-based, weighted by chapter count)
     const totalChapters = progress?.reduce(
       (sum, p) => sum + Number(p.total_chapters),
       0
@@ -58,8 +58,12 @@ export async function GET(request: NextRequest) {
       (sum, p) => sum + Number(p.completed_chapters),
       0
     ) || 0;
+    const weightedProgress = progress?.reduce(
+      (sum, p) => sum + Number(p.progress_percentage) * Number(p.total_chapters),
+      0
+    ) || 0;
     const overallPercentage =
-      totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
+      totalChapters > 0 ? Math.round(weightedProgress / totalChapters) : 0;
 
     return NextResponse.json({
       byLevel: progress?.map((p) => ({
