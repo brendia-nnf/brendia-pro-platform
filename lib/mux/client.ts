@@ -37,10 +37,18 @@ export function generateSignedPlaybackUrl(
   const now = Math.floor(Date.now() / 1000);
   const exp = now + expiresIn;
 
+  // Mux expects single-letter audience codes, not the full type name
+  const audiences: Record<string, string> = {
+    video: "v",
+    thumbnail: "t",
+    gif: "g",
+    storyboard: "s",
+  };
+
   // Create JWT payload
   const payload: Record<string, unknown> = {
     sub: playbackId,
-    aud: type,
+    aud: audiences[type] || "v",
     exp,
     kid: signingKeyId,
   };
@@ -53,6 +61,7 @@ export function generateSignedPlaybackUrl(
   // Sign the token
   const token = jwt.sign(payload, Buffer.from(signingKey, "base64"), {
     algorithm: "RS256",
+    keyid: signingKeyId,
   });
 
   // Return signed URL
