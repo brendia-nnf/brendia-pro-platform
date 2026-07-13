@@ -102,10 +102,22 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
+  // (admins land on the admin dashboard, students on theirs)
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     const redirectTo = request.nextUrl.searchParams.get("redirectTo");
-    url.pathname = redirectTo || `/${locale}/dashboard`;
+
+    let defaultTarget = `/${locale}/dashboard`;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single() as { data: ProfileRow | null };
+    if (profile?.role === "admin") {
+      defaultTarget = `/${locale}/admin`;
+    }
+
+    url.pathname = redirectTo || defaultTarget;
     url.search = "";
     return NextResponse.redirect(url);
   }
