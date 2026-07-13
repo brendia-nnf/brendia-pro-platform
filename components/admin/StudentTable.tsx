@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, Badge, Button, Input, Avatar, Modal, ModalFooter } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
-import { Search, MoreVertical, Eye, RefreshCw, Loader2, Package } from "lucide-react";
+import { Search, Eye, RefreshCw, Loader2, Package, Camera, Award, BookOpen } from "lucide-react";
+import { Progress } from "@/components/ui";
 
 type KitStatusValue = "preparing" | "shipped" | "delivered";
 
@@ -38,6 +39,52 @@ const KIT_BADGES: Record<KitStatusValue, "warning" | "secondary" | "success"> = 
   delivered: "success",
 };
 
+interface StudentDetail {
+  id: string;
+  email: string;
+  fullName: string | null;
+  phone: string | null;
+  createdAt: string;
+  emailVerified: boolean;
+  enrollments: Array<{
+    id: string;
+    courseName: string;
+    package: string;
+    status: string;
+    amountPaid: number;
+    currency: string;
+    purchasedAt: string;
+    kitStatus: KitStatusValue;
+    kitTrackingNumber: string | null;
+  }> | null;
+  progress: Array<{
+    levelNumber: number;
+    totalChapters: number;
+    completedChapters: number;
+    progressPercentage: number;
+  }> | null;
+  certification: {
+    status: string;
+    appliedAt: string | null;
+    approvedAt: string | null;
+    certificateNumber: string | null;
+  } | null;
+  photoSubmissions: {
+    pending: number;
+    approved: number;
+    redo_requested: number;
+  };
+}
+
+const CERT_LABELS: Record<string, string> = {
+  not_eligible: "Nije još ispunila uvjete",
+  eligible: "Ispunjava uvjete",
+  applied: "Prijavljena",
+  under_review: "Na pregledu",
+  approved: "Certificirana",
+  rejected: "Odbijena",
+};
+
 interface Pagination {
   page: number;
   limit: number;
@@ -58,6 +105,28 @@ export function StudentTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detail, setDetail] = useState<StudentDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const openDetail = async (student: Student) => {
+    setDetailOpen(true);
+    setDetail(null);
+    setLoadingDetail(true);
+    try {
+      const response = await fetch(`/api/admin/students/${student.id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch student details");
+      }
+      setDetail(await response.json());
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to fetch student details");
+      setDetailOpen(false);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
   const [kitStudent, setKitStudent] = useState<Student | null>(null);
   const [kitStatusValue, setKitStatusValue] = useState<KitStatusValue>("preparing");
   const [kitTracking, setKitTracking] = useState("");
@@ -361,11 +430,13 @@ export function StudentTable() {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDetail(student)}
+                        title="Detalji studenta"
+                      >
                         <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
@@ -411,6 +482,164 @@ export function StudentTable() {
           </div>
         </div>
       )}
+
+      {/* Student detail modal */}
+      <Modal
+        isOpen={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        size="lg"
+        title={detail?.fullName || "Detalji studenta"}
+        description={detail ? detail.email : ""}
+      >
+        {loadingDetail && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+          </div>
+        )}
+
+        {detail && (
+          <div className="space-y-5">
+            {/* Basic info */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-gray-500">Telefon</p>
+                <p className="font-medium text-primary">{detail.phone || "—"}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Registrirana</p>
+                <p className="font-medium text-primary">
+                  {formatDate(new Date(detail.createdAt))}
+                </p>
+              </div>
+            </div>
+
+            {/* Enrollments */}
+            <div>
+              <p className="text-sm font-medium text-primary flex items-center gap-2 mb-2">
+                <BookOpen className="h-4 w-4 text-secondary" />
+                Upisi
+              </p>
+              {(detail.enrollments || []).length > 0 ? (
+                <div className="space-y-2">
+                  {(detail.enrollments || []).map((enrollment) => (
+                    <div
+                      key={enrollment.id}
+                      className="bg-gray-50 rounded-lg p-3 text-sm flex flex-wrap items-center justify-between gap-2"
+                    >
+                      <div>
+                        <p className="font-medium text-primary">
+                          {enrollment.courseName}
+                        </p>
+                        <p className="text-gray-500">
+                          {formatDate(new Date(enrollment.purchasedAt))} ·{" "}
+                          {enrollment.amountPaid.toFixed(2)} € · Kit:{" "}
+                          {KIT_LABELS[enrollment.kitStatus]}
+                          {enrollment.kitTrackingNumber
+                            ? ` (${enrollment.kitTrackingNumber})`
+                            : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            enrollment.package === "advanced" ? "secondary" : "outline"
+                          }
+                          size="sm"
+                        >
+                          {enrollment.package === "advanced" ? "Napredni" : "Osnovni"}
+                        </Badge>
+                        <Badge
+                          variant={enrollment.status === "active" ? "success" : "error"}
+                          size="sm"
+                        >
+                          {enrollment.status === "active" ? "Aktivan" : enrollment.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Nema upisa.</p>
+              )}
+            </div>
+
+            {/* Progress */}
+            <div>
+              <p className="text-sm font-medium text-primary flex items-center gap-2 mb-2">
+                <BookOpen className="h-4 w-4 text-secondary" />
+                Napredak
+              </p>
+              {(detail.progress || []).length > 0 ? (
+                <div className="space-y-2">
+                  {(detail.progress || []).map((level) => (
+                    <div key={level.levelNumber} className="text-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-gray-600">
+                          Razina {level.levelNumber}
+                        </span>
+                        <span className="text-gray-500">
+                          {level.completedChapters}/{level.totalChapters} poglavlja ·{" "}
+                          {level.progressPercentage}%
+                        </span>
+                      </div>
+                      <Progress value={level.progressPercentage} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Još nije počela s učenjem.</p>
+              )}
+            </div>
+
+            {/* Photo submissions */}
+            <div>
+              <p className="text-sm font-medium text-primary flex items-center gap-2 mb-2">
+                <Camera className="h-4 w-4 text-secondary" />
+                Radovi
+              </p>
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="secondary" size="sm">
+                  {detail.photoSubmissions.pending} na pregledu
+                </Badge>
+                <Badge variant="success" size="sm">
+                  {detail.photoSubmissions.approved} odobreno
+                </Badge>
+                <Badge variant="error" size="sm">
+                  {detail.photoSubmissions.redo_requested} dorada
+                </Badge>
+              </div>
+            </div>
+
+            {/* Certification */}
+            <div>
+              <p className="text-sm font-medium text-primary flex items-center gap-2 mb-2">
+                <Award className="h-4 w-4 text-secondary" />
+                Certifikacija
+              </p>
+              <div className="text-sm text-gray-600">
+                <Badge
+                  variant={
+                    detail.certification?.status === "approved"
+                      ? "success"
+                      : detail.certification?.status === "applied" ||
+                          detail.certification?.status === "under_review"
+                        ? "warning"
+                        : "outline"
+                  }
+                  size="sm"
+                >
+                  {CERT_LABELS[detail.certification?.status || "not_eligible"]}
+                </Badge>
+                {detail.certification?.certificateNumber && (
+                  <span className="ml-2">
+                    Certifikat: {detail.certification.certificateNumber}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Kit status modal */}
       <Modal

@@ -64,6 +64,8 @@ export async function GET(
       currency: string;
       purchased_at: string;
       expires_at: string | null;
+      kit_status: string | null;
+      kit_tracking_number: string | null;
     }
 
     // Fetch enrollments
@@ -117,6 +119,26 @@ export async function GET(
       .eq("user_id", studentId)
       .order("last_active", { ascending: false }) as { data: DeviceRow[] | null };
 
+    // Photo submission counts by status
+    const { data: submissions } = await adminClient
+      .from("photo_submissions")
+      .select("status")
+      .eq("user_id", studentId) as { data: Array<{ status: string }> | null };
+
+    const photoSubmissions = { pending: 0, approved: 0, redo_requested: 0 };
+    for (const s of submissions || []) {
+      if (s.status in photoSubmissions) {
+        photoSubmissions[s.status as keyof typeof photoSubmissions]++;
+      }
+    }
+
+    const courseNames: Record<string, string> = {
+      "foundation-certification": "Brendia Pro® Artist",
+      "master-certification": "Advanced Brendia Pro® Artist",
+      "brendia-pro-artist-1v1": "Brendia Pro® Artist 1v1",
+      "brendia-pro-master-1v1": "Brendia Pro® Master 1v1",
+    };
+
     return NextResponse.json({
       id: studentId,
       email: authUser?.user?.email || "",
@@ -128,13 +150,17 @@ export async function GET(
       enrollments: enrollments?.map((e) => ({
         id: e.id,
         courseId: e.course_id,
+        courseName: courseNames[e.course_id] || e.course_id,
         package: e.package,
         status: e.status,
         amountPaid: e.amount_paid / 100,
         currency: e.currency,
         purchasedAt: e.purchased_at,
         expiresAt: e.expires_at,
+        kitStatus: e.kit_status || "preparing",
+        kitTrackingNumber: e.kit_tracking_number,
       })),
+      photoSubmissions,
       progress: progress?.map((p) => ({
         levelNumber: p.level_number,
         totalChapters: Number(p.total_chapters),
