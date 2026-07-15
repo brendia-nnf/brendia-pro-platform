@@ -35,8 +35,8 @@ interface MonriFormData {
   currency: string;
   digest: string;
   transaction_type: string;
-  success_url: string;
-  cancel_url: string;
+  success_url_override: string;
+  cancel_url_override: string;
   callback_url: string;
   ch_full_name: string;
   ch_email: string;
@@ -416,8 +416,8 @@ export default function CheckoutPage() {
           <input type="hidden" name="currency" value={monriData.formData.currency} />
           <input type="hidden" name="digest" value={monriData.formData.digest} />
           <input type="hidden" name="transaction_type" value={monriData.formData.transaction_type} />
-          <input type="hidden" name="success_url" value={monriData.formData.success_url} />
-          <input type="hidden" name="cancel_url" value={monriData.formData.cancel_url} />
+          <input type="hidden" name="success_url_override" value={monriData.formData.success_url_override} />
+          <input type="hidden" name="cancel_url_override" value={monriData.formData.cancel_url_override} />
           <input type="hidden" name="callback_url" value={monriData.formData.callback_url} />
           <input type="hidden" name="ch_full_name" value={monriData.formData.ch_full_name} />
           <input type="hidden" name="ch_email" value={monriData.formData.ch_email} />
