@@ -72,10 +72,12 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    // Lift cues above the control bar (negative = lines from the bottom)
-    const raiseActiveCues = (track: TextTrack) => {
-      if (!track.activeCues) return;
-      for (const cue of Array.from(track.activeCues)) {
+    // Lift cues above the control bar (negative = lines from the bottom).
+    // Repositioning an already-displayed cue doesn't reflow, so raise every
+    // buffered cue before it becomes active — cues stream in over time.
+    const raiseAllCues = (track: TextTrack) => {
+      if (!track.cues) return;
+      for (const cue of Array.from(track.cues)) {
         const vttCue = cue as VTTCue;
         if (vttCue.line !== -4) {
           vttCue.snapToLines = true;
@@ -102,7 +104,7 @@ export function VideoPlayer({
         const active = captionsOn && index === preferredIndex;
         track.mode = active ? "showing" : "disabled";
         if (active) {
-          raiseActiveCues(track);
+          raiseAllCues(track);
           track.addEventListener("cuechange", handleCueChange);
         } else {
           track.removeEventListener("cuechange", handleCueChange);
@@ -111,7 +113,7 @@ export function VideoPlayer({
     };
 
     function handleCueChange(this: TextTrack) {
-      raiseActiveCues(this);
+      raiseAllCues(this);
     }
 
     applyCaptionState();
