@@ -339,3 +339,15 @@ export function photoSubmissionRedoEmail(
     <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
   `);
 }
+
+// New support/ticket message from the Brendia Pro team
+export function newMessageEmail(name: string, subject: string): string {
+  return baseTemplate(`
+    <h1>Nova poruka</h1>
+    <p>${name ? `Draga ${name},` : "Pozdrav,"}</p>
+    <p>Imate novu poruku od Brendia Pro tima u vezi: <strong>${subject}</strong></p>
+    <p>Prijavite se na platformu kako biste procitali poruku i odgovorili.</p>
+    <a href="${PLATFORM_URL}/hr/poruke" class="button">Procitaj poruku</a>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+  `);
+}

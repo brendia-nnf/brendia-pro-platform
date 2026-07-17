@@ -180,6 +180,15 @@ async function handleWebshopCallback(
   panToken: string | null,
   maskedPan: string | null
 ) {
+  // Monri may deliver the same callback more than once — never
+  // process a finalized order twice (avoids double stock deduction)
+  if (order.status !== "pending") {
+    console.log(
+      `Webshop order ${orderNumber} already processed (status: ${order.status}), skipping`
+    );
+    return;
+  }
+
   const newStatus = isSuccess ? "paid" : "cancelled";
 
   const updateData: Record<string, unknown> = {
@@ -199,7 +208,8 @@ async function handleWebshopCallback(
   const { error: updateError } = await supabase
     .from("webshop_orders")
     .update(updateData as never)
-    .eq("id", order.id);
+    .eq("id", order.id)
+    .eq("status", "pending");
 
   if (updateError) {
     console.error("Failed to update webshop order:", updateError);
@@ -207,6 +217,30 @@ async function handleWebshopCallback(
   }
 
   console.log(`Webshop order ${orderNumber} updated to status: ${newStatus}`);
+
+  // Deduct inventory for each ordered item
+  if (isSuccess && Array.isArray(order.items)) {
+    for (const item of order.items as Array<{
+      productId?: string;
+      quantity?: number;
+    }>) {
+      if (!item.productId || !item.quantity) continue;
+      const { error: stockError } = await supabase.rpc(
+        "decrement_product_stock",
+        {
+          p_product_id: item.productId,
+          p_quantity: item.quantity,
+        } as never
+      );
+      if (stockError) {
+        // Don't fail the callback over inventory bookkeeping
+        console.error(
+          `Failed to decrement stock for product ${item.productId}:`,
+          stockError
+        );
+      }
+    }
+  }
 
   // TODO: Send order confirmation email if successful
   // if (isSuccess && order.customer_email) {

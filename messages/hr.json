@@ -45,7 +45,9 @@
     "settings": "Postavke",
     "logout": "Odjava",
     "needHelp": "Trebate pomoć?",
-    "contactSupport": "Kontaktirajte našu podršku."
+    "contactSupport": "Kontaktirajte našu podršku.",
+    "myOrders": "Moje narudžbe",
+    "messages": "Poruke"
   },
   "auth": {
     "login": {
@@ -257,5 +259,56 @@
   "languageSwitcher": {
     "hr": "HR",
     "en": "EN"
+  },
+  "notifications": {
+    "title": "Obavijesti",
+    "empty": "Nemate obavijesti"
+  },
+  "orders": {
+    "title": "Moje narudžbe",
+    "subtitle": "Pregled svih vaših narudžbi iz webshopa",
+    "empty": "Još nemate narudžbi",
+    "emptyHint": "Kada nešto naručite iz webshopa, narudžba će se prikazati ovdje.",
+    "goToWebshop": "Idi u webshop",
+    "itemCount": "{count} proizvoda",
+    "trackingNumber": "Broj za praćenje",
+    "subtotal": "Međuzbroj",
+    "shipping": "Dostava",
+    "freeShipping": "Besplatna",
+    "discount": "Popust",
+    "total": "Ukupno",
+    "status": {
+      "pending": "Na čekanju",
+      "paid": "Plaćeno",
+      "processing": "U obradi",
+      "shipped": "Poslano",
+      "delivered": "Dostavljeno",
+      "cancelled": "Otkazano",
+      "refunded": "Refundirano"
+    }
+  },
+  "messages": {
+    "title": "Poruke",
+    "subtitle": "Komunikacija s Brendia Pro timom",
+    "newTicket": "Nova poruka",
+    "subjectLabel": "Naslov",
+    "subjectPlaceholder": "Ukratko opišite temu",
+    "messageLabel": "Poruka",
+    "messagePlaceholder": "Opišite svoje pitanje ili problem…",
+    "send": "Pošalji",
+    "cancel": "Odustani",
+    "createError": "Greška pri slanju poruke. Pokušajte ponovo.",
+    "empty": "Nemate poruka",
+    "emptyHint": "Otvorite novu poruku ako imate pitanje ili problem.",
+    "notFound": "Poruka nije pronađena",
+    "backToMessages": "Natrag na poruke",
+    "replyPlaceholder": "Napišite poruku…",
+    "teamSender": "Brendia Pro tim",
+    "youSender": "Vi",
+    "status": {
+      "open": "Čeka odgovor",
+      "answered": "Odgovoreno",
+      "closed": "Zatvoreno"
+    }
   }
 }

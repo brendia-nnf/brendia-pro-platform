@@ -7,8 +7,9 @@ import { Avatar, Dropdown, DropdownItem, DropdownSeparator } from "@/components/
 import { CartDrawer } from "@/components/webshop";
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
-import { Menu, Bell, ShoppingBag, User, Settings, LogOut } from "lucide-react";
+import { Menu, ShoppingBag, User, Settings, LogOut } from "lucide-react";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { NotificationBell } from "./NotificationBell";
 
 interface DashboardHeaderProps {
   onMenuClick?: () => void;
@@ -64,13 +65,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           </button>
 
           {/* Notifications */}
-          <button
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
-            aria-label={t("notifications")}
-          >
-            <Bell className="h-5 w-5 text-gray-600" />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-secondary rounded-full" />
-          </button>
+          <NotificationBell />
 
           {/* User menu */}
           <Dropdown

@@ -12,6 +12,7 @@ import {
   Ticket,
   ShoppingBag,
   Package,
+  MessageCircle,
   ArrowLeft,
   X,
 } from "lucide-react";
@@ -62,6 +63,11 @@ const adminNavItems = [
     href: "/admin/narudzbe",
     label: "Narudžbe",
     icon: Package,
+  },
+  {
+    href: "/admin/poruke",
+    label: "Poruke",
+    icon: MessageCircle,
   },
 ];
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { generateCertificatePDF } from "@/lib/certificates/generate";
+import { createNotification } from "@/lib/notifications";
 
 const updateCertificationSchema = z.object({
   action: z.enum(["approve", "reject", "review"]),
@@ -153,6 +154,25 @@ export async function PATCH(
     // } else if (action === 'reject') {
     //   await sendCertificationRejectedEmail(certification.user_id, rejectionReason);
     // }
+
+    // In-app notification behind the dashboard bell
+    if (action === "approve" || action === "reject") {
+      await createNotification({
+        userId: certification.user_id,
+        type: "certification",
+        title:
+          action === "approve"
+            ? "Vaša certifikacija je odobrena!"
+            : "Vaša certifikacija je odbijena",
+        body:
+          action === "approve"
+            ? updated.certificate_number
+              ? `Broj certifikata: ${updated.certificate_number}`
+              : undefined
+            : rejectionReason,
+        link: "/certifikat",
+      });
+    }
 
     return NextResponse.json({
       success: true,

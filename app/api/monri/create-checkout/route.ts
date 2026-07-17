@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import type { CartItem } from "@/lib/types/webshop";
 import { SHIPPING_THRESHOLD, SHIPPING_COST } from "@/lib/types/webshop";
 import {
@@ -63,6 +63,57 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
+    // Link the order to the logged-in student when there is a session
+    // (the webshop lives inside the dashboard, so this is the normal case)
+    let userId: string | null = null;
+    try {
+      const authClient = await createServerSupabaseClient();
+      const {
+        data: { user },
+      } = await authClient.auth.getUser();
+      userId = user?.id || null;
+    } catch {
+      // Guest checkout stays possible
+    }
+
+    // Validate stock before creating the order
+    const productIds = items.map((item) => item.product.id);
+    const { data: stockRows } = await supabase
+      .from("products")
+      .select("id, name, in_stock, stock_quantity, track_inventory")
+      .in("id", productIds) as {
+        data: Array<{
+          id: string;
+          name: string;
+          in_stock: boolean;
+          stock_quantity: number;
+          track_inventory: boolean;
+        }> | null;
+      };
+
+    for (const item of items) {
+      const product = stockRows?.find((p) => p.id === item.product.id);
+      if (!product) {
+        return NextResponse.json(
+          { error: `Proizvod "${item.product.name}" više nije dostupan` },
+          { status: 400 }
+        );
+      }
+      if (
+        !product.in_stock ||
+        (product.track_inventory && product.stock_quantity < item.quantity)
+      ) {
+        return NextResponse.json(
+          {
+            error: product.track_inventory && product.stock_quantity > 0
+              ? `Proizvod "${product.name}" — na skladištu je još ${product.stock_quantity} kom`
+              : `Proizvod "${product.name}" nema na skladištu`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Calculate subtotal (items are already in euros from frontend)
     const subtotal = items.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
@@ -81,7 +132,7 @@ export async function POST(request: NextRequest) {
         .rpc("validate_coupon", {
           p_code: couponCode.toUpperCase(),
           p_order_subtotal: formatAmountForMonri(subtotal),
-          p_user_id: null, // Guest checkout
+          p_user_id: userId,
         } as never) as { data: Array<{ valid: boolean; discount_amount: number; coupon_id: string }> | null; error: unknown };
 
       if (couponError) {
@@ -124,6 +175,7 @@ export async function POST(request: NextRequest) {
     // Create order in database with pending status
     const { error: dbError } = await supabase.from("webshop_orders").insert({
       order_number: orderNumber,
+      user_id: userId,
       // Customer details
       customer_name: customerName,
       customer_email: customerEmail,

@@ -10,6 +10,8 @@ import {
   Award,
   User,
   ShoppingBag,
+  Package,
+  MessageCircle,
   X,
   ChevronRight,
 } from "lucide-react";
@@ -53,6 +55,16 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
       href: "/webshop",
       label: t("webshop"),
       icon: ShoppingBag,
+    },
+    {
+      href: "/narudzbe",
+      label: t("myOrders"),
+      icon: Package,
+    },
+    {
+      href: "/poruke",
+      label: t("messages"),
+      icon: MessageCircle,
     },
     {
       href: "/certifikat",

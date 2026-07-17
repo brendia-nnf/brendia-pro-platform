@@ -45,7 +45,9 @@
     "settings": "Settings",
     "logout": "Log out",
     "needHelp": "Need help?",
-    "contactSupport": "Contact our support."
+    "contactSupport": "Contact our support.",
+    "myOrders": "My Orders",
+    "messages": "Messages"
   },
   "auth": {
     "login": {
@@ -257,5 +259,56 @@
   "languageSwitcher": {
     "hr": "HR",
     "en": "EN"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet"
+  },
+  "orders": {
+    "title": "My Orders",
+    "subtitle": "All your webshop orders in one place",
+    "empty": "No orders yet",
+    "emptyHint": "When you order something from the webshop, it will show up here.",
+    "goToWebshop": "Go to webshop",
+    "itemCount": "{count} items",
+    "trackingNumber": "Tracking number",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "freeShipping": "Free",
+    "discount": "Discount",
+    "total": "Total",
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
+    }
+  },
+  "messages": {
+    "title": "Messages",
+    "subtitle": "Communication with the Brendia Pro team",
+    "newTicket": "New message",
+    "subjectLabel": "Subject",
+    "subjectPlaceholder": "Briefly describe the topic",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Describe your question or issue…",
+    "send": "Send",
+    "cancel": "Cancel",
+    "createError": "Failed to send the message. Please try again.",
+    "empty": "No messages yet",
+    "emptyHint": "Open a new message if you have a question or an issue.",
+    "notFound": "Message not found",
+    "backToMessages": "Back to messages",
+    "replyPlaceholder": "Write a message…",
+    "teamSender": "Brendia Pro team",
+    "youSender": "You",
+    "status": {
+      "open": "Awaiting reply",
+      "answered": "Answered",
+      "closed": "Closed"
+    }
   }
 }

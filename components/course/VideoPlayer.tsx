@@ -12,6 +12,8 @@ import {
   SkipForward,
   SkipBack,
   Check,
+  Captions,
+  CaptionsOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +60,33 @@ export function VideoPlayer({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [hasCaptions, setHasCaptions] = useState(false);
+  const [captionsOn, setCaptionsOn] = useState(false);
+
+  // Detect subtitle tracks in the stream (e.g. Mux generated captions) and
+  // apply the user's on/off choice. Tracks arrive asynchronously with HLS.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const applyCaptionState = () => {
+      const tracks = Array.from(video.textTracks).filter(
+        (track) => track.kind === "subtitles" || track.kind === "captions"
+      );
+      setHasCaptions(tracks.length > 0);
+      tracks.forEach((track, index) => {
+        track.mode = captionsOn && index === 0 ? "showing" : "hidden";
+      });
+    };
+
+    applyCaptionState();
+    video.textTracks.addEventListener("addtrack", applyCaptionState);
+    video.textTracks.addEventListener("removetrack", applyCaptionState);
+    return () => {
+      video.textTracks.removeEventListener("addtrack", applyCaptionState);
+      video.textTracks.removeEventListener("removetrack", applyCaptionState);
+    };
+  }, [captionsOn, videoUrl]);
 
   // Hide controls after inactivity
   useEffect(() => {
@@ -439,6 +468,24 @@ export function VideoPlayer({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Captions */}
+            {hasCaptions && (
+              <button
+                onClick={() => setCaptionsOn((prev) => !prev)}
+                className={cn(
+                  "p-2 hover:bg-white/20 rounded-lg transition-colors",
+                  captionsOn && "bg-white/20"
+                )}
+                aria-label={captionsOn ? "Isključi titlove" : "Uključi titlove"}
+              >
+                {captionsOn ? (
+                  <Captions className="h-5 w-5 text-secondary" />
+                ) : (
+                  <CaptionsOff className="h-5 w-5 text-white" />
+                )}
+              </button>
+            )}
+
             {/* Settings */}
             <div className="relative">
               <button

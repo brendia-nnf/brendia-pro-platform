@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { createNotification } from "@/lib/notifications";
 
 const updateOrderSchema = z.object({
   status: z.enum(["pending", "paid", "processing", "shipped", "delivered", "cancelled", "refunded"]),
@@ -68,6 +69,7 @@ export async function PATCH(
     interface OrderUpdateResult {
       id: string;
       order_number: string;
+      user_id: string | null;
       status: string;
       tracking_number: string | null;
       shipped_at: string | null;
@@ -87,6 +89,23 @@ export async function PATCH(
         { error: "Failed to update order" },
         { status: 500 }
       );
+    }
+
+    // Notify the customer about shipping progress
+    if (order.user_id && (status === "shipped" || status === "delivered")) {
+      await createNotification({
+        userId: order.user_id,
+        type: "order",
+        title:
+          status === "shipped"
+            ? `Narudžba ${order.order_number} je poslana`
+            : `Narudžba ${order.order_number} je dostavljena`,
+        body:
+          status === "shipped" && order.tracking_number
+            ? `Broj za praćenje: ${order.tracking_number}`
+            : undefined,
+        link: "/narudzbe",
+      });
     }
 
     return NextResponse.json({

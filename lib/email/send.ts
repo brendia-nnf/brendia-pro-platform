@@ -65,6 +65,7 @@ import {
   enrollmentActivationEmail,
   photoSubmissionApprovedEmail,
   photoSubmissionRedoEmail,
+  newMessageEmail,
 } from "./templates";
 
 export async function sendWelcomeEmail(to: string, name: string) {
@@ -210,5 +211,17 @@ export async function sendEnrollmentActivation(
     to,
     subject: `Aktivirajte pristup: ${courseName} - Brendia Pro`,
     html: enrollmentActivationEmail(name, courseName, activationUrl, orderNumber),
+  });
+}
+
+export async function sendNewMessageNotification(
+  to: string,
+  name: string,
+  subject: string
+) {
+  return sendEmail({
+    to,
+    subject: `Nova poruka od Brendia Pro tima`,
+    html: newMessageEmail(name, subject),
   });
 }

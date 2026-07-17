@@ -5,6 +5,7 @@ import {
   sendPhotoSubmissionApproved,
   sendPhotoSubmissionRedo,
 } from "@/lib/email/send";
+import { createNotification } from "@/lib/notifications";
 
 const reviewSubmissionSchema = z.object({
   action: z.enum(["approve", "redo"]),
@@ -158,6 +159,20 @@ export async function PATCH(
     } catch (emailError) {
       console.error("Photo submission notification email failed:", emailError);
     }
+
+    // In-app notification behind the dashboard bell
+    await createNotification({
+      userId: submission.user_id,
+      type: "photo_review",
+      title:
+        action === "approve"
+          ? "Vaš rad je odobren"
+          : "Potrebne su nove fotografije rada",
+      body: submission.chapter?.title
+        ? `${submission.chapter.title}${feedback?.trim() ? ` — ${feedback.trim()}` : ""}`
+        : feedback?.trim() || undefined,
+      link: "/dashboard",
+    });
 
     return NextResponse.json({
       success: true,
