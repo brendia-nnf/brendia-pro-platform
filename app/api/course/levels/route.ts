@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getRequestLocale, localized } from "@/lib/i18n/api-locale";
 
 // GET - Fetch all course levels
 export async function GET(request: NextRequest) {
   try {
+    const locale = getRequestLocale(request);
     const supabase = await createServerSupabaseClient();
 
     // Get user if authenticated
@@ -218,9 +220,9 @@ export async function GET(request: NextRequest) {
           return {
             id: chapter.id,
             chapterNumber: chapter.chapter_number,
-            title: chapter.title,
+            title: localized(locale, chapter.title, chapter.title_en),
             titleEn: chapter.title_en,
-            description: chapter.description,
+            description: localized(locale, chapter.description, chapter.description_en),
             descriptionEn: chapter.description_en,
             videoDuration: chapter.video_duration,
             thumbnailUrl: chapter.video_thumbnail_url,
@@ -236,9 +238,9 @@ export async function GET(request: NextRequest) {
       return {
         id: level.id,
         levelNumber: level.level_number,
-        title: level.title,
+        title: localized(locale, level.title, level.title_en),
         titleEn: level.title_en,
-        description: level.description,
+        description: localized(locale, level.description, level.description_en),
         descriptionEn: level.description_en,
         requiredPackage: level.required_package,
         isPublished: level.is_published,

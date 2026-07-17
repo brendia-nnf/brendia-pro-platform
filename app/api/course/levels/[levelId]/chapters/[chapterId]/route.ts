@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
 import { generateSignedPlaybackUrl } from "@/lib/mux/client";
+import { getRequestLocale, localized } from "@/lib/i18n/api-locale";
 
 // GET - Fetch single chapter with video access
 export async function GET(
@@ -111,14 +112,15 @@ export async function GET(
       progress = progressData;
     }
 
-    // Build response
+    // Build response (title/description localized via NEXT_LOCALE cookie)
+    const locale = getRequestLocale(request);
     const response: Record<string, unknown> = {
       id: chapter.id,
       levelId: chapter.level_id,
       chapterNumber: chapter.chapter_number,
-      title: chapter.title,
+      title: localized(locale, chapter.title, chapter.title_en),
       titleEn: chapter.title_en,
-      description: chapter.description,
+      description: localized(locale, chapter.description, chapter.description_en),
       descriptionEn: chapter.description_en,
       videoDuration: chapter.video_duration,
       thumbnailUrl: chapter.video_thumbnail_url,
@@ -219,12 +221,13 @@ export async function GET(
       id: string;
       chapter_number: number;
       title: string;
+      title_en: string | null;
     }
 
     // Fetch next/previous chapters for navigation
     const { data: adjacentChapters } = await supabase
       .from("chapters")
-      .select("id, chapter_number, title")
+      .select("id, chapter_number, title, title_en")
       .eq("level_id", levelId)
       .eq("is_published", true)
       .order("sort_order", { ascending: true }) as { data: AdjacentChapterRow[] | null };
@@ -237,7 +240,7 @@ export async function GET(
         response.previousChapter = {
           id: prev.id,
           chapterNumber: prev.chapter_number,
-          title: prev.title,
+          title: localized(locale, prev.title, prev.title_en),
         };
       }
 
@@ -246,7 +249,7 @@ export async function GET(
         response.nextChapter = {
           id: next.id,
           chapterNumber: next.chapter_number,
-          title: next.title,
+          title: localized(locale, next.title, next.title_en),
         };
       }
     }

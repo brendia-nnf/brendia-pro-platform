@@ -16,6 +16,7 @@ import {
   CaptionsOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "next-intl";
 
 interface VideoPlayerProps {
   title: string;
@@ -63,12 +64,25 @@ export function VideoPlayer({
   const [hasStarted, setHasStarted] = useState(false);
   const [hasCaptions, setHasCaptions] = useState(false);
   const [captionsOn, setCaptionsOn] = useState(false);
+  const locale = useLocale();
 
   // Detect subtitle tracks in the stream (e.g. Mux generated captions) and
   // apply the user's on/off choice. Tracks arrive asynchronously with HLS.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Lift cues above the control bar (negative = lines from the bottom)
+    const raiseActiveCues = (track: TextTrack) => {
+      if (!track.activeCues) return;
+      for (const cue of Array.from(track.activeCues)) {
+        const vttCue = cue as VTTCue;
+        if (vttCue.line !== -4) {
+          vttCue.snapToLines = true;
+          vttCue.line = -4;
+        }
+      }
+    };
 
     const applyCaptionState = () => {
       const tracks = Array.from(video.textTracks).filter(
@@ -79,10 +93,26 @@ export function VideoPlayer({
       if (hlsRef.current) {
         hlsRef.current.subtitleDisplay = captionsOn;
       }
+      // Prefer the caption language matching the site language
+      const preferredIndex = Math.max(
+        tracks.findIndex((track) => (track.language || "").startsWith(locale)),
+        0
+      );
       tracks.forEach((track, index) => {
-        track.mode = captionsOn && index === 0 ? "showing" : "disabled";
+        const active = captionsOn && index === preferredIndex;
+        track.mode = active ? "showing" : "disabled";
+        if (active) {
+          raiseActiveCues(track);
+          track.addEventListener("cuechange", handleCueChange);
+        } else {
+          track.removeEventListener("cuechange", handleCueChange);
+        }
       });
     };
+
+    function handleCueChange(this: TextTrack) {
+      raiseActiveCues(this);
+    }
 
     applyCaptionState();
     video.textTracks.addEventListener("addtrack", applyCaptionState);
