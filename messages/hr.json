@@ -252,6 +252,82 @@
     "level1": "Razina 1",
     "level2": "Razina 2"
   },
+  "coursePlayer": {
+    "breadcrumbs": {
+      "dashboard": "Nadzorna ploča",
+      "level": "Razina {number}",
+      "chapter": "Poglavlje {number}"
+    },
+    "notFound": {
+      "title": "Sadržaj nije pronađen",
+      "description": "Poglavlje koje tražite ne postoji.",
+      "backToOverview": "Natrag na pregled"
+    },
+    "navigation": {
+      "previous": "Prethodno",
+      "nextChapter": "Sljedeće poglavlje",
+      "watchHint": "Pogledajte 95% videa za nastavak",
+      "photosHint": "Pošaljite fotografije rada za nastavak"
+    },
+    "sidebar": {
+      "openChapterList": "Otvori popis poglavlja",
+      "close": "Zatvori",
+      "progress": "Napredak"
+    },
+    "progress": {
+      "completed": "Završeno"
+    },
+    "completion": {
+      "videoWatchedTitle": "Video pogledan!",
+      "levelCompleteTitle": "Razina završena!",
+      "chapterCompleteTitle": "Poglavlje završeno!",
+      "photosDescription": "Odlično! Sada primijenite tehniku iz \"{title}\" na svom modelu i pošaljite tri fotografije rada (sprijeda, s lijeve i desne strane). Time se otključava sljedeće poglavlje.",
+      "levelCompleteDescription": "Čestitamo! Završili ste \"{title}\" i cijelu razinu.",
+      "chapterCompleteDescription": "Uspješno ste završili \"{title}\".",
+      "later": "Kasnije",
+      "submitPhotos": "Pošalji fotografije rada",
+      "backToOverview": "Natrag na pregled",
+      "applyForCertificate": "Prijavi se za certifikat",
+      "stayHere": "Ostani ovdje",
+      "next": "Sljedeće: {title}",
+      "close": "Zatvori"
+    },
+    "photos": {
+      "title": "Fotografije vašeg rada",
+      "subtitle": "Tri fotografije: sprijeda, s lijeve i desne strane",
+      "status": {
+        "pending": "Na pregledu",
+        "approved": "Odobreno",
+        "redoRequested": "Potrebna dorada"
+      },
+      "notWatchedHint": "Nakon što pogledate video, primijenite tehniku na svom modelu i ovdje pošaljite tri fotografije rada. Time se otključava sljedeće poglavlje.",
+      "pendingInfo": "Vaše fotografije su poslane i čekaju Nikolininu recenziju. Možete nastaviti sa sljedećim poglavljem dok čekate.",
+      "approvedInfo": "Vaš rad je odobren. Odličan posao!",
+      "feedbackTitle": "Nikolinina povratna informacija:",
+      "redoInfo": "Primijenite povratnu informaciju i pošaljite nove fotografije.",
+      "angles": {
+        "front": {
+          "label": "Sprijeda",
+          "hint": "Cijela glava, kosa spuštena"
+        },
+        "left": {
+          "label": "Lijeva strana",
+          "hint": "Profil s lijeve strane"
+        },
+        "right": {
+          "label": "Desna strana",
+          "hint": "Profil s desne strane"
+        }
+      },
+      "removePhoto": "Ukloni fotografiju: {label}",
+      "fileRequirements": "JPEG, PNG ili HEIC · najviše 10 MB po fotografiji",
+      "uploadError": "Učitavanje nije uspjelo",
+      "submitError": "Slanje nije uspjelo",
+      "submitting": "Slanje...",
+      "resubmit": "Pošalji novi rad",
+      "submit": "Pošalji rad"
+    }
+  },
   "demo": {
     "downloadNotAvailable": "Preuzimanje certifikata nije dostupno u demo verziji.",
     "shareNotAvailable": "Dijeljenje certifikata nije dostupno u demo verziji."

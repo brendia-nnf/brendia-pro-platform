@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Modal, Button } from "@/components/ui";
 import { CheckCircle2, ArrowRight, RotateCcw, Camera } from "lucide-react";
 
@@ -29,6 +30,7 @@ export function CompletionModal({
   hasSubmission = false,
   onGoToPhotos,
 }: CompletionModalProps) {
+  const t = useTranslations("coursePlayer.completion");
   const needsPhotos = requiresPhotos && !hasSubmission;
 
   return (
@@ -48,25 +50,25 @@ export function CompletionModal({
 
         <h2 className="text-2xl font-heading font-semibold text-primary mb-2">
           {needsPhotos
-            ? "Video pogledan!"
+            ? t("videoWatchedTitle")
             : isLevelComplete
-              ? "Razina završena!"
-              : "Poglavlje završeno!"}
+              ? t("levelCompleteTitle")
+              : t("chapterCompleteTitle")}
         </h2>
 
         <p className="text-gray-600 mb-6">
           {needsPhotos
-            ? `Odlično! Sada primijenite tehniku iz "${chapterTitle}" na svom modelu i pošaljite tri fotografije rada (sprijeda, s lijeve i desne strane). Time se otključava sljedeće poglavlje.`
+            ? t("photosDescription", { title: chapterTitle })
             : isLevelComplete
-              ? `Čestitamo! Završili ste "${chapterTitle}" i cijelu razinu.`
-              : `Uspješno ste završili "${chapterTitle}".`}
+              ? t("levelCompleteDescription", { title: chapterTitle })
+              : t("chapterCompleteDescription", { title: chapterTitle })}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {needsPhotos ? (
             <>
               <Button variant="outline" onClick={onClose}>
-                Kasnije
+                {t("later")}
               </Button>
               <Button
                 onClick={() => {
@@ -75,7 +77,7 @@ export function CompletionModal({
                 }}
               >
                 <Camera className="h-4 w-4 mr-2" />
-                Pošalji fotografije rada
+                {t("submitPhotos")}
               </Button>
             </>
           ) : isLevelComplete ? (
@@ -83,12 +85,12 @@ export function CompletionModal({
               <Link href="/dashboard">
                 <Button variant="outline">
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  Natrag na pregled
+                  {t("backToOverview")}
                 </Button>
               </Link>
               <Link href="/certifikat">
                 <Button>
-                  Prijavi se za certifikat
+                  {t("applyForCertificate")}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
@@ -96,17 +98,17 @@ export function CompletionModal({
           ) : nextChapterId ? (
             <>
               <Button variant="outline" onClick={onClose}>
-                Ostani ovdje
+                {t("stayHere")}
               </Button>
               <Link href={`/tecaj/${levelId}/${nextChapterId}`}>
                 <Button>
-                  Sljedeće: {nextChapterTitle}
+                  {t("next", { title: nextChapterTitle ?? "" })}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
             </>
           ) : (
-            <Button onClick={onClose}>Zatvori</Button>
+            <Button onClick={onClose}>{t("close")}</Button>
           )}
         </div>
       </div>

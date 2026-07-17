@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { Progress, Badge } from "@/components/ui";
 import { CheckCircle2 } from "lucide-react";
 
@@ -10,6 +11,8 @@ export function ProgressTracker({
   watchPercentage,
   isCompleted,
 }: ProgressTrackerProps) {
+  const t = useTranslations("coursePlayer.progress");
+
   return (
     <div className="flex items-center gap-4">
       <Progress
@@ -25,7 +28,7 @@ export function ProgressTracker({
         {isCompleted && (
           <Badge variant="success" size="sm">
             <CheckCircle2 className="h-3 w-3 mr-1" />
-            Završeno
+            {t("completed")}
           </Badge>
         )}
       </div>

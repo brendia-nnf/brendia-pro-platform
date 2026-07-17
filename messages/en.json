@@ -252,6 +252,82 @@
     "level1": "Level 1",
     "level2": "Level 2"
   },
+  "coursePlayer": {
+    "breadcrumbs": {
+      "dashboard": "Dashboard",
+      "level": "Level {number}",
+      "chapter": "Chapter {number}"
+    },
+    "notFound": {
+      "title": "Content not found",
+      "description": "The chapter you are looking for does not exist.",
+      "backToOverview": "Back to overview"
+    },
+    "navigation": {
+      "previous": "Previous",
+      "nextChapter": "Next chapter",
+      "watchHint": "Watch 95% of the video to continue",
+      "photosHint": "Submit photos of your work to continue"
+    },
+    "sidebar": {
+      "openChapterList": "Open chapter list",
+      "close": "Close",
+      "progress": "Progress"
+    },
+    "progress": {
+      "completed": "Completed"
+    },
+    "completion": {
+      "videoWatchedTitle": "Video watched!",
+      "levelCompleteTitle": "Level completed!",
+      "chapterCompleteTitle": "Chapter completed!",
+      "photosDescription": "Great job! Now apply the technique from \"{title}\" on your model and submit three photos of your work (front, left and right side). This unlocks the next chapter.",
+      "levelCompleteDescription": "Congratulations! You have completed \"{title}\" and the entire level.",
+      "chapterCompleteDescription": "You have successfully completed \"{title}\".",
+      "later": "Later",
+      "submitPhotos": "Submit photos of your work",
+      "backToOverview": "Back to overview",
+      "applyForCertificate": "Apply for certification",
+      "stayHere": "Stay here",
+      "next": "Next: {title}",
+      "close": "Close"
+    },
+    "photos": {
+      "title": "Photos of your work",
+      "subtitle": "Three photos: front, left and right side",
+      "status": {
+        "pending": "In review",
+        "approved": "Approved",
+        "redoRequested": "Redo requested"
+      },
+      "notWatchedHint": "After watching the video, apply the technique on your model and submit three photos of your work here. This unlocks the next chapter.",
+      "pendingInfo": "Your photos have been submitted and are awaiting Nikolina's review. You can continue with the next chapter while you wait.",
+      "approvedInfo": "Your work has been approved. Great job!",
+      "feedbackTitle": "Nikolina's feedback:",
+      "redoInfo": "Apply the feedback and submit new photos.",
+      "angles": {
+        "front": {
+          "label": "Front",
+          "hint": "Whole head, hair down"
+        },
+        "left": {
+          "label": "Left side",
+          "hint": "Profile from the left side"
+        },
+        "right": {
+          "label": "Right side",
+          "hint": "Profile from the right side"
+        }
+      },
+      "removePhoto": "Remove photo: {label}",
+      "fileRequirements": "JPEG, PNG or HEIC · max 10 MB per photo",
+      "uploadError": "Upload failed",
+      "submitError": "Submission failed",
+      "submitting": "Sending...",
+      "resubmit": "Submit new work",
+      "submit": "Submit work"
+    }
+  },
   "demo": {
     "downloadNotAvailable": "Certificate download is not available in demo version.",
     "shareNotAvailable": "Certificate sharing is not available in demo version."

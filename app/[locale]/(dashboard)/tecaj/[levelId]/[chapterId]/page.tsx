@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Container, Button, Card } from "@/components/ui";
 import {
   VideoPlayer,
@@ -59,6 +60,7 @@ interface ChapterData {
 }
 
 export default function CoursePlayerPage() {
+  const t = useTranslations("coursePlayer");
   const params = useParams();
   const levelId = params.levelId as string;
   const chapterId = params.chapterId as string;
@@ -175,13 +177,13 @@ export default function CoursePlayerPage() {
       <Container>
         <div className="text-center py-12">
           <h1 className="text-2xl font-heading font-semibold text-primary mb-2">
-            Sadržaj nije pronađen
+            {t("notFound.title")}
           </h1>
           <p className="text-gray-600 mb-4">
-            Poglavlje koje tražite ne postoji.
+            {t("notFound.description")}
           </p>
           <Link href="/dashboard">
-            <Button>Natrag na pregled</Button>
+            <Button>{t("notFound.backToOverview")}</Button>
           </Link>
         </div>
       </Container>
@@ -201,7 +203,7 @@ export default function CoursePlayerPage() {
     !nextChapter &&
     currentIndex === level.chapters.length - 1;
 
-  const levelName = `Razina ${level.levelNumber}`;
+  const levelName = t("breadcrumbs.level", { number: level.levelNumber });
   const levelProgress =
     level.totalChapters > 0
       ? Math.round((level.completedChapters / level.totalChapters) * 100)
@@ -226,9 +228,9 @@ export default function CoursePlayerPage() {
   }));
 
   const nextDisabledHint = !isCompleted
-    ? "Pogledajte 95% videa za nastavak"
+    ? t("navigation.watchHint")
     : needsPhotos
-      ? "Pošaljite fotografije rada za nastavak"
+      ? t("navigation.photosHint")
       : undefined;
 
   return (
@@ -238,7 +240,7 @@ export default function CoursePlayerPage() {
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-600 mb-4">
           <Link href="/dashboard" className="hover:text-primary transition-colors">
-            Nadzorna ploča
+            {t("breadcrumbs.dashboard")}
           </Link>
           <ChevronRight className="h-4 w-4 text-gray-400" />
           {level.chapters[0] && (
@@ -253,7 +255,7 @@ export default function CoursePlayerPage() {
             </>
           )}
           <span className="text-primary font-medium">
-            Poglavlje {chapter.chapterNumber}
+            {t("breadcrumbs.chapter", { number: chapter.chapterNumber })}
           </span>
         </nav>
 
@@ -273,7 +275,7 @@ export default function CoursePlayerPage() {
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <p className="text-sm text-secondary font-medium mb-1">
-                {levelName} · Poglavlje {chapter.chapterNumber}
+                {levelName} · {t("breadcrumbs.chapter", { number: chapter.chapterNumber })}
               </p>
               <h1 className="text-2xl font-heading font-semibold text-primary">
                 {chapter.title}
@@ -282,7 +284,7 @@ export default function CoursePlayerPage() {
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label="Otvori popis poglavlja"
+              aria-label={t("sidebar.openChapterList")}
             >
               <Menu className="h-5 w-5 text-gray-600" />
             </button>
@@ -302,7 +304,7 @@ export default function CoursePlayerPage() {
               <Link href={`/tecaj/${levelId}/${previousChapter.id}`}>
                 <Button variant="outline" size="sm">
                   <ChevronLeft className="h-4 w-4 mr-1" />
-                  Prethodno
+                  {t("navigation.previous")}
                 </Button>
               </Link>
             ) : (
@@ -315,7 +317,7 @@ export default function CoursePlayerPage() {
                 className={!isNextEnabled ? "pointer-events-none" : ""}
               >
                 <Button size="sm" disabled={!isNextEnabled} title={nextDisabledHint}>
-                  Sljedeće poglavlje
+                  {t("navigation.nextChapter")}
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </Link>

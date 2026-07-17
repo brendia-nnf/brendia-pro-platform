@@ -6,6 +6,7 @@ interface ProgressProps {
   size?: "sm" | "md" | "lg";
   variant?: "default" | "success" | "warning";
   showLabel?: boolean;
+  label?: string;
   className?: string;
 }
 
@@ -15,6 +16,7 @@ function Progress({
   size = "md",
   variant = "default",
   showLabel = false,
+  label = "Napredak",
   className,
 }: ProgressProps) {
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
@@ -35,7 +37,7 @@ function Progress({
     <div className={cn("w-full", className)}>
       {showLabel && (
         <div className="flex justify-between items-center mb-1">
-          <span className="text-sm text-gray-600">Napredak</span>
+          <span className="text-sm text-gray-600">{label}</span>
           <span className="text-sm font-medium text-primary">
             {Math.round(percentage)}%
           </span>

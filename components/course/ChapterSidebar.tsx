@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ChapterCard } from "./ChapterCard";
 import { Progress } from "@/components/ui";
 import type { Chapter, ChapterStatus } from "@/lib/types";
@@ -27,6 +28,8 @@ export function ChapterSidebar({
   isOpen,
   onClose,
 }: ChapterSidebarProps) {
+  const t = useTranslations("coursePlayer.sidebar");
+
   return (
     <>
       {/* Mobile overlay */}
@@ -53,12 +56,12 @@ export function ChapterSidebar({
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
-              aria-label="Zatvori"
+              aria-label={t("close")}
             >
               <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          <Progress value={levelProgress} size="sm" showLabel />
+          <Progress value={levelProgress} size="sm" showLabel label={t("progress")} />
         </div>
 
         {/* Chapter list */}

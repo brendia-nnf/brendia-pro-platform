@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, Button, Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { PhotoSubmission } from "@/lib/types";
@@ -17,11 +18,7 @@ import {
 
 type Angle = "front" | "left" | "right";
 
-const ANGLES: Array<{ key: Angle; label: string; hint: string }> = [
-  { key: "front", label: "Sprijeda", hint: "Cijela glava, kosa spuštena" },
-  { key: "left", label: "Lijeva strana", hint: "Profil s lijeve strane" },
-  { key: "right", label: "Desna strana", hint: "Profil s desne strane" },
-];
+const ANGLE_KEYS: Angle[] = ["front", "left", "right"];
 
 interface UploadedPhoto {
   path: string;
@@ -43,6 +40,14 @@ export function PhotoSubmissionPanel({
   onSubmitted,
   className,
 }: PhotoSubmissionPanelProps) {
+  const t = useTranslations("coursePlayer.photos");
+  const ANGLES: Array<{ key: Angle; label: string; hint: string }> = ANGLE_KEYS.map(
+    (key) => ({
+      key,
+      label: t(`angles.${key}.label`),
+      hint: t(`angles.${key}.hint`),
+    })
+  );
   const [uploads, setUploads] = useState<Partial<Record<Angle, UploadedPhoto>>>({});
   const [uploading, setUploading] = useState<Partial<Record<Angle, boolean>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -73,7 +78,7 @@ export function PhotoSubmissionPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Učitavanje nije uspjelo");
+        throw new Error(data.error || t("uploadError"));
       }
 
       setUploads((prev) => ({
@@ -81,7 +86,7 @@ export function PhotoSubmissionPanel({
         [angle]: { path: data.path, previewUrl: data.url },
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Učitavanje nije uspjelo");
+      setError(err instanceof Error ? err.message : t("uploadError"));
     } finally {
       setUploading((prev) => ({ ...prev, [angle]: false }));
     }
@@ -117,13 +122,13 @@ export function PhotoSubmissionPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Slanje nije uspjelo");
+        throw new Error(data.error || t("submitError"));
       }
 
       setUploads({});
       onSubmitted(data.submission);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Slanje nije uspjelo");
+      setError(err instanceof Error ? err.message : t("submitError"));
     } finally {
       setSubmitting(false);
     }
@@ -131,9 +136,9 @@ export function PhotoSubmissionPanel({
 
   const submittedPhotos = submission
     ? [
-        { label: "Sprijeda", url: submission.photoFrontUrl },
-        { label: "Lijeva strana", url: submission.photoLeftUrl },
-        { label: "Desna strana", url: submission.photoRightUrl },
+        { label: t("angles.front.label"), url: submission.photoFrontUrl },
+        { label: t("angles.left.label"), url: submission.photoLeftUrl },
+        { label: t("angles.right.label"), url: submission.photoRightUrl },
       ]
     : [];
 
@@ -147,27 +152,27 @@ export function PhotoSubmissionPanel({
           </div>
           <div>
             <h2 className="text-lg font-heading font-semibold text-primary">
-              Fotografije vašeg rada
+              {t("title")}
             </h2>
             <p className="text-sm text-gray-500">
-              Tri fotografije: sprijeda, s lijeve i desne strane
+              {t("subtitle")}
             </p>
           </div>
         </div>
 
         {status === "pending" && (
           <Badge variant="secondary" size="sm">
-            Na pregledu
+            {t("status.pending")}
           </Badge>
         )}
         {status === "approved" && (
           <Badge variant="success" size="sm">
-            Odobreno
+            {t("status.approved")}
           </Badge>
         )}
         {status === "redo_requested" && (
           <Badge variant="error" size="sm">
-            Potrebna dorada
+            {t("status.redoRequested")}
           </Badge>
         )}
       </div>
@@ -175,8 +180,7 @@ export function PhotoSubmissionPanel({
       {/* Not watched yet */}
       {!isChapterWatched && !submission && (
         <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-4">
-          Nakon što pogledate video, primijenite tehniku na svom modelu i ovdje
-          pošaljite tri fotografije rada. Time se otključava sljedeće poglavlje.
+          {t("notWatchedHint")}
         </p>
       )}
 
@@ -185,8 +189,7 @@ export function PhotoSubmissionPanel({
         <div className="flex items-start gap-3 bg-secondary/5 border border-secondary/20 rounded-lg p-4 mb-4">
           <Hourglass className="h-5 w-5 text-secondary flex-shrink-0 mt-0.5" />
           <p className="text-sm text-gray-700">
-            Vaše fotografije su poslane i čekaju Nikolininu recenziju. Možete
-            nastaviti sa sljedećim poglavljem dok čekate.
+            {t("pendingInfo")}
           </p>
         </div>
       )}
@@ -196,7 +199,7 @@ export function PhotoSubmissionPanel({
         <div className="flex items-start gap-3 bg-success/5 border border-success/20 rounded-lg p-4 mb-4">
           <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
           <div className="text-sm text-gray-700">
-            <p>Vaš rad je odobren. Odličan posao!</p>
+            <p>{t("approvedInfo")}</p>
             {submission?.feedback && (
               <p className="mt-2 italic">&bdquo;{submission.feedback}&rdquo;</p>
             )}
@@ -210,11 +213,11 @@ export function PhotoSubmissionPanel({
           <MessageCircle className="h-5 w-5 text-error flex-shrink-0 mt-0.5" />
           <div className="text-sm text-gray-700">
             <p className="font-medium text-primary mb-1">
-              Nikolinina povratna informacija:
+              {t("feedbackTitle")}
             </p>
             <p className="italic">&bdquo;{submission?.feedback}&rdquo;</p>
             <p className="mt-2">
-              Primijenite povratnu informaciju i pošaljite nove fotografije.
+              {t("redoInfo")}
             </p>
           </div>
         </div>
@@ -279,7 +282,7 @@ export function PhotoSubmissionPanel({
                       <button
                         onClick={() => handleRemove(angle.key)}
                         className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
-                        aria-label={`Ukloni fotografiju: ${angle.label}`}
+                        aria-label={t("removePhoto", { label: angle.label })}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -321,7 +324,7 @@ export function PhotoSubmissionPanel({
 
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
             <p className="text-xs text-gray-500">
-              JPEG, PNG ili HEIC · najviše 10&nbsp;MB po fotografiji
+              {t("fileRequirements")}
             </p>
             <Button
               size="sm"
@@ -331,17 +334,17 @@ export function PhotoSubmissionPanel({
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Slanje...
+                  {t("submitting")}
                 </>
               ) : status === "redo_requested" ? (
                 <>
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  Pošalji novi rad
+                  {t("resubmit")}
                 </>
               ) : (
                 <>
                   <Camera className="h-4 w-4 mr-2" />
-                  Pošalji rad
+                  {t("submit")}
                 </>
               )}
             </Button>
