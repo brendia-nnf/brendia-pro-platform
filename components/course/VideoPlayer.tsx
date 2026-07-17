@@ -47,6 +47,7 @@ export function VideoPlayer({
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const lastProgressUpdateRef = useRef<number>(0);
+  const hlsRef = useRef<import("hls.js").default | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -74,8 +75,12 @@ export function VideoPlayer({
         (track) => track.kind === "subtitles" || track.kind === "captions"
       );
       setHasCaptions(tracks.length > 0);
+      // Keep hls.js's own display flag in sync so it doesn't fight the modes
+      if (hlsRef.current) {
+        hlsRef.current.subtitleDisplay = captionsOn;
+      }
       tracks.forEach((track, index) => {
-        track.mode = captionsOn && index === 0 ? "showing" : "hidden";
+        track.mode = captionsOn && index === 0 ? "showing" : "disabled";
       });
     };
 
@@ -102,15 +107,18 @@ export function VideoPlayer({
     return () => clearTimeout(timeout);
   }, [isPlaying, showControls]);
 
-  // Attach the video source. Mux serves HLS (.m3u8), which only Safari
-  // plays natively - other browsers need hls.js (loaded on demand).
+  // Attach the video source. Mux serves HLS (.m3u8). Prefer hls.js wherever
+  // MSE is available - some browsers (e.g. newer Chrome) claim native HLS
+  // support but don't expose subtitle tracks, so hls.js gives us consistent
+  // captions. iOS Safari has no MSE and uses native playback, which does
+  // expose subtitle tracks itself.
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoUrl) return;
 
     const isHlsSource = videoUrl.includes(".m3u8");
 
-    if (!isHlsSource || video.canPlayType("application/vnd.apple.mpegurl")) {
+    if (!isHlsSource) {
       video.src = videoUrl;
       return;
     }
@@ -122,16 +130,20 @@ export function VideoPlayer({
       if (cancelled || !videoRef.current) return;
       if (Hls.isSupported()) {
         hls = new Hls();
+        // Captions render only when the user toggles them on
+        hls.subtitleDisplay = false;
         hls.loadSource(videoUrl);
         hls.attachMedia(videoRef.current);
+        hlsRef.current = hls;
       } else {
-        // Last resort: let the browser try the URL directly
+        // No MSE (iOS Safari): native HLS playback
         videoRef.current.src = videoUrl;
       }
     });
 
     return () => {
       cancelled = true;
+      hlsRef.current = null;
       hls?.destroy();
     };
   }, [videoUrl]);
