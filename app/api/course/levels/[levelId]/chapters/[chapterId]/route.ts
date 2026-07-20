@@ -29,6 +29,8 @@ export async function GET(
       video_thumbnail_url: string | null;
       is_preview: boolean;
       requires_photos: boolean;
+      subtitle_hr: string | null;
+      subtitle_en: string | null;
       level: {
         id: string;
         level_number: number;
@@ -147,6 +149,25 @@ export async function GET(
         response.videoUrl = generateSignedPlaybackUrl(chapter.video_url, {
           userId: user?.id,
         });
+      }
+    }
+
+    // Include signed subtitle (VTT) URLs so the mobile app can render captions
+    // (it can't read the HLS-embedded tracks the web player uses).
+    if (hasAccess && (chapter.subtitle_hr || chapter.subtitle_en)) {
+      const adminClient = createAdminClient();
+      const paths = [chapter.subtitle_hr, chapter.subtitle_en].filter(
+        (p): p is string => !!p
+      );
+      const { data: signed } = await adminClient.storage
+        .from("subtitles")
+        .createSignedUrls(paths, 3600);
+      const urlByPath = new Map((signed || []).map((s) => [s.path, s.signedUrl]));
+      if (chapter.subtitle_hr) {
+        response.subtitlesHr = urlByPath.get(chapter.subtitle_hr) || null;
+      }
+      if (chapter.subtitle_en) {
+        response.subtitlesEn = urlByPath.get(chapter.subtitle_en) || null;
       }
     }
 
