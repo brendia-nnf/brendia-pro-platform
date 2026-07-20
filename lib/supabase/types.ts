@@ -44,6 +44,7 @@ export interface Database {
           user_id: string;
           course_id: string;
           package: "basic" | "advanced";
+          grants_course_access: boolean;
           status: "active" | "expired" | "cancelled" | "refunded";
           amount_paid: number;
           currency: string;
@@ -61,6 +62,7 @@ export interface Database {
           user_id: string;
           course_id: string;
           package: "basic" | "advanced";
+          grants_course_access?: boolean;
           status?: "active" | "expired" | "cancelled" | "refunded";
           amount_paid: number;
           currency?: string;
@@ -78,6 +80,7 @@ export interface Database {
           user_id?: string;
           course_id?: string;
           package?: "basic" | "advanced";
+          grants_course_access?: boolean;
           status?: "active" | "expired" | "cancelled" | "refunded";
           amount_paid?: number;
           currency?: string;

@@ -9,6 +9,13 @@ const COURSE_PACKAGES: Record<string, string> = {
   "brendia-pro-master-1v1": "advanced",
 };
 
+// Products that grant platform access but NOT the recorded course lessons
+// (1-on-1 coaching). Everything else unlocks its package's course materials.
+const COURSE_ACCESS_EXCLUDED = new Set([
+  "brendia-pro-artist-1v1",
+  "brendia-pro-master-1v1",
+]);
+
 // GET: Validate token and return user info
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -217,6 +224,7 @@ export async function POST(request: NextRequest) {
 
     // Determine package based on course
     const packageType = COURSE_PACKAGES[order.course_id] || "basic";
+    const grantsCourseAccess = !COURSE_ACCESS_EXCLUDED.has(order.course_id);
 
     // Create enrollment
     const { error: enrollmentError } = await supabase.from("enrollments").insert({
@@ -224,6 +232,7 @@ export async function POST(request: NextRequest) {
       order_id: order.id,
       course_id: order.course_id,
       package: packageType,
+      grants_course_access: grantsCourseAccess,
       status: "active",
       amount_paid: order.amount,
       currency: order.currency,

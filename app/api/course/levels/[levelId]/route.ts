@@ -80,31 +80,33 @@ export async function GET(
 
     // Check user's enrollment and access
     let hasAccess = false;
-    let enrollment = null;
     let userProgress: Record<string, { watchPercentage: number; completed: boolean; lastPosition: number }> = {};
     const photoStatuses: Record<string, string> = {};
 
     if (user) {
       interface EnrollmentRow {
         package: string;
-        status: string;
+        grants_course_access: boolean;
       }
 
-      const { data: enrollmentData } = await supabase
+      // Only enrollments that grant course access unlock lessons; 1-on-1
+      // coaching products give platform access but not the recorded course.
+      // Consider all active enrollments so a student who owns both a course
+      // and a 1v1 keeps their course access.
+      const { data: enrollments } = await supabase
         .from("enrollments")
-        .select("*")
+        .select("package, grants_course_access")
         .eq("user_id", user.id)
-        .eq("status", "active")
-        .order("purchased_at", { ascending: false })
-        .limit(1)
-        .single() as { data: EnrollmentRow | null };
+        .eq("status", "active") as { data: EnrollmentRow[] | null };
 
-      enrollment = enrollmentData;
+      const courseEnrollments = (enrollments || []).filter(
+        (e) => e.grants_course_access
+      );
 
-      if (enrollment) {
+      if (courseEnrollments.length > 0) {
         if (level.required_package !== "advanced") {
           hasAccess = true;
-        } else if (enrollment.package === "advanced") {
+        } else if (courseEnrollments.some((e) => e.package === "advanced")) {
           hasAccess = true;
         }
       }
