@@ -33,6 +33,10 @@ interface VideoPlayerProps {
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const PROGRESS_UPDATE_INTERVAL = 10; // seconds
 
+// Caption vertical position: lines from the bottom (less negative = lower on
+// screen). -1 sits just above the auto-hiding control bar. Tune here.
+const CAPTION_LINE = -2;
+
 export function VideoPlayer({
   title,
   videoUrl,
@@ -79,9 +83,9 @@ export function VideoPlayer({
       if (!track.cues) return;
       for (const cue of Array.from(track.cues)) {
         const vttCue = cue as VTTCue;
-        if (vttCue.line !== -4) {
+        if (vttCue.line !== CAPTION_LINE) {
           vttCue.snapToLines = true;
-          vttCue.line = -4;
+          vttCue.line = CAPTION_LINE;
         }
       }
     };
@@ -395,10 +399,21 @@ export function VideoPlayer({
       onMouseMove={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
+      {/* Caption sizing. The browser sizes native cues relative to the video
+          region by default, which renders large on a wide player. Fixed px
+          size below applies at any player size, including fullscreen. */}
+      <style>{`
+        .course-caption::cue {
+          font-size: 23px;
+          line-height: 1.3;
+          background: rgba(0, 0, 0, 0.6);
+        }
+      `}</style>
+
       {/* Video element */}
       <video
         ref={videoRef}
-        className="w-full h-full object-contain"
+        className="course-caption w-full h-full object-contain"
         poster={thumbnailUrl}
         playsInline
         onTimeUpdate={handleTimeUpdate}
