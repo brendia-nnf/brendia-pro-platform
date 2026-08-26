@@ -33,10 +33,6 @@ interface VideoPlayerProps {
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const PROGRESS_UPDATE_INTERVAL = 10; // seconds
 
-// Caption vertical position: lines from the bottom (less negative = lower on
-// screen). -1 sits just above the auto-hiding control bar. Tune here.
-const CAPTION_LINE = -2;
-
 export function VideoPlayer({
   title,
   videoUrl,
@@ -68,36 +64,38 @@ export function VideoPlayer({
   const [hasStarted, setHasStarted] = useState(false);
   const [hasCaptions, setHasCaptions] = useState(false);
   const [captionsOn, setCaptionsOn] = useState(false);
+  const [activeCueText, setActiveCueText] = useState("");
   const locale = useLocale();
 
   // Detect subtitle tracks in the stream (e.g. Mux generated captions) and
   // apply the user's on/off choice. Tracks arrive asynchronously with HLS.
+  // Cues are rendered by our own overlay element, never natively: native cue
+  // rendering draws a background box we can't reliably style across browsers.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Lift cues above the control bar (negative = lines from the bottom).
-    // Repositioning an already-displayed cue doesn't reflow, so raise every
-    // buffered cue before it becomes active — cues stream in over time.
-    const raiseAllCues = (track: TextTrack) => {
-      if (!track.cues) return;
-      for (const cue of Array.from(track.cues)) {
-        const vttCue = cue as VTTCue;
-        if (vttCue.line !== CAPTION_LINE) {
-          vttCue.snapToLines = true;
-          vttCue.line = CAPTION_LINE;
-        }
-      }
+    const readActiveCues = (track: TextTrack) => {
+      const cues = track.activeCues ? Array.from(track.activeCues) : [];
+      setActiveCueText(
+        cues
+          .map((cue) => (cue as VTTCue).text.replace(/<[^>]+>/g, ""))
+          .join("\n")
+      );
     };
+
+    function handleCueChange(this: TextTrack) {
+      readActiveCues(this);
+    }
 
     const applyCaptionState = () => {
       const tracks = Array.from(video.textTracks).filter(
         (track) => track.kind === "subtitles" || track.kind === "captions"
       );
       setHasCaptions(tracks.length > 0);
-      // Keep hls.js's own display flag in sync so it doesn't fight the modes
+      // Never let hls.js flip tracks to "showing" — we render cues ourselves
       if (hlsRef.current) {
-        hlsRef.current.subtitleDisplay = captionsOn;
+        hlsRef.current.subtitleDisplay = false;
       }
       // Prefer the caption language matching the site language
       const preferredIndex = Math.max(
@@ -106,19 +104,17 @@ export function VideoPlayer({
       );
       tracks.forEach((track, index) => {
         const active = captionsOn && index === preferredIndex;
-        track.mode = active ? "showing" : "disabled";
+        // "hidden" keeps cues loading and firing cuechange without native
+        // rendering; "showing" would draw the browser's own black cue box
+        track.mode = active ? "hidden" : "disabled";
+        track.removeEventListener("cuechange", handleCueChange);
         if (active) {
-          raiseAllCues(track);
           track.addEventListener("cuechange", handleCueChange);
-        } else {
-          track.removeEventListener("cuechange", handleCueChange);
+          readActiveCues(track);
         }
       });
+      if (!captionsOn) setActiveCueText("");
     };
-
-    function handleCueChange(this: TextTrack) {
-      raiseAllCues(this);
-    }
 
     applyCaptionState();
     video.textTracks.addEventListener("addtrack", applyCaptionState);
@@ -126,8 +122,11 @@ export function VideoPlayer({
     return () => {
       video.textTracks.removeEventListener("addtrack", applyCaptionState);
       video.textTracks.removeEventListener("removetrack", applyCaptionState);
+      for (const track of Array.from(video.textTracks)) {
+        track.removeEventListener("cuechange", handleCueChange);
+      }
     };
-  }, [captionsOn, videoUrl]);
+  }, [captionsOn, videoUrl, locale]);
 
   // Hide controls after inactivity
   useEffect(() => {
@@ -399,14 +398,13 @@ export function VideoPlayer({
       onMouseMove={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
-      {/* Caption sizing. The browser sizes native cues relative to the video
-          region by default, which renders large on a wide player. Fixed px
-          size below applies at any player size, including fullscreen. */}
+      {/* Caption text style. Fixed px size applies at any player size,
+          including fullscreen; text-shadow keeps it readable on bright
+          footage without a background box. */}
       <style>{`
-        .course-caption::cue {
+        .caption-overlay {
           font-size: 23px;
           line-height: 1.3;
-          background: transparent;
           text-shadow:
             0 0 4px rgba(0, 0, 0, 0.9),
             0 1px 2px rgba(0, 0, 0, 0.9),
@@ -415,7 +413,7 @@ export function VideoPlayer({
         /* Tablets: touch device at tablet width (phones are narrower,
            desktops have a fine pointer) */
         @media (pointer: coarse) and (min-width: 768px) {
-          .course-caption::cue {
+          .caption-overlay {
             font-size: 18px;
           }
         }
@@ -424,7 +422,7 @@ export function VideoPlayer({
       {/* Video element */}
       <video
         ref={videoRef}
-        className="course-caption w-full h-full object-contain"
+        className="w-full h-full object-contain"
         poster={thumbnailUrl}
         playsInline
         onTimeUpdate={handleTimeUpdate}
@@ -434,6 +432,21 @@ export function VideoPlayer({
         onPlaying={handlePlaying}
         onClick={togglePlay}
       />
+
+      {/* Subtitles: our own cue rendering (no native black box). Sits above
+          the control bar while it's visible, drops lower when it hides. */}
+      {captionsOn && activeCueText && (
+        <div
+          className={cn(
+            "caption-overlay pointer-events-none absolute left-0 right-0 flex justify-center px-6 transition-all duration-300",
+            showControls ? "bottom-20" : "bottom-6"
+          )}
+        >
+          <span className="text-white text-center whitespace-pre-line">
+            {activeCueText}
+          </span>
+        </div>
+      )}
 
       {/* Buffering indicator */}
       {isBuffering && (
