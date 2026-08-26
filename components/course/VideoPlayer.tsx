@@ -406,7 +406,18 @@ export function VideoPlayer({
         .course-caption::cue {
           font-size: 23px;
           line-height: 1.3;
-          background: rgba(0, 0, 0, 0.6);
+          background: transparent;
+          text-shadow:
+            0 0 4px rgba(0, 0, 0, 0.9),
+            0 1px 2px rgba(0, 0, 0, 0.9),
+            0 0 8px rgba(0, 0, 0, 0.7);
+        }
+        /* Tablets: touch device at tablet width (phones are narrower,
+           desktops have a fine pointer) */
+        @media (pointer: coarse) and (min-width: 768px) {
+          .course-caption::cue {
+            font-size: 18px;
+          }
         }
       `}</style>
 
