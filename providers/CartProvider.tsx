@@ -8,13 +8,18 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import type { Product, CartItem, CartState } from "@/lib/types/webshop";
+import type {
+  Product,
+  ProductVariant,
+  CartItem,
+  CartState,
+} from "@/lib/types/webshop";
 import { SHIPPING_THRESHOLD, SHIPPING_COST } from "@/lib/types/webshop";
 
 interface CartContextValue extends CartState {
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addToCart: (product: Product, quantity?: number, variant?: ProductVariant) => void;
+  removeFromCart: (productId: string, variantId?: string) => void;
+  updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getCartCount: () => number;
@@ -37,6 +42,13 @@ interface CartProviderProps {
 }
 
 const CART_STORAGE_KEY = "brendia_cart";
+
+// A cart line is identified by product + chosen combination
+const sameLine = (item: CartItem, productId: string, variantId?: string) =>
+  item.product.id === productId && (item.variant?.id || undefined) === variantId;
+
+export const itemUnitPrice = (item: CartItem) =>
+  item.variant ? item.variant.price : item.product.price;
 
 export function CartProvider({ children }: CartProviderProps) {
   const [state, setState] = useState<CartState>({
@@ -79,52 +91,58 @@ export function CartProvider({ children }: CartProviderProps) {
     }
   }, [state.items, state.isLoading]);
 
-  const addToCart = useCallback((product: Product, quantity: number = 1) => {
-    setState((prev) => {
-      const existingItem = prev.items.find(
-        (item) => item.product.id === product.id
-      );
+  const addToCart = useCallback(
+    (product: Product, quantity: number = 1, variant?: ProductVariant) => {
+      setState((prev) => {
+        const existingItem = prev.items.find((item) =>
+          sameLine(item, product.id, variant?.id)
+        );
 
-      if (existingItem) {
-        // Update quantity if product already in cart
+        if (existingItem) {
+          // Update quantity if the same product+combination is already in cart
+          return {
+            ...prev,
+            items: prev.items.map((item) =>
+              sameLine(item, product.id, variant?.id)
+                ? { ...item, quantity: item.quantity + quantity }
+                : item
+            ),
+          };
+        }
+
+        // Add new item
         return {
           ...prev,
-          items: prev.items.map((item) =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + quantity }
-              : item
-          ),
+          items: [...prev.items, { product, quantity, variant }],
         };
+      });
+    },
+    []
+  );
+
+  const removeFromCart = useCallback((productId: string, variantId?: string) => {
+    setState((prev) => ({
+      ...prev,
+      items: prev.items.filter((item) => !sameLine(item, productId, variantId)),
+    }));
+  }, []);
+
+  const updateQuantity = useCallback(
+    (productId: string, quantity: number, variantId?: string) => {
+      if (quantity < 1) {
+        removeFromCart(productId, variantId);
+        return;
       }
 
-      // Add new item
-      return {
+      setState((prev) => ({
         ...prev,
-        items: [...prev.items, { product, quantity }],
-      };
-    });
-  }, []);
-
-  const removeFromCart = useCallback((productId: string) => {
-    setState((prev) => ({
-      ...prev,
-      items: prev.items.filter((item) => item.product.id !== productId),
-    }));
-  }, []);
-
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
-    if (quantity < 1) {
-      removeFromCart(productId);
-      return;
-    }
-
-    setState((prev) => ({
-      ...prev,
-      items: prev.items.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      ),
-    }));
-  }, [removeFromCart]);
+        items: prev.items.map((item) =>
+          sameLine(item, productId, variantId) ? { ...item, quantity } : item
+        ),
+      }));
+    },
+    [removeFromCart]
+  );
 
   const clearCart = useCallback(() => {
     setState((prev) => ({
@@ -135,7 +153,7 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const getSubtotal = useCallback(() => {
     return state.items.reduce(
-      (total, item) => total + item.product.price * item.quantity,
+      (total, item) => total + itemUnitPrice(item) * item.quantity,
       0
     );
   }, [state.items]);

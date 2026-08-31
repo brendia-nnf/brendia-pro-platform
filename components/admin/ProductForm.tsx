@@ -5,13 +5,44 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, Button, Input } from "@/components/ui";
 import { ArrowLeft, Package, Plus, X, Upload, Loader2 } from "lucide-react";
-import type { Product, ProductCategory } from "@/lib/types/webshop";
-import { CATEGORY_LABELS } from "@/lib/types/webshop";
+import type { Product, ProductCategory, HairTexture } from "@/lib/types/webshop";
+import {
+  CATEGORY_LABELS,
+  TEXTURE_LABELS,
+  VARIANT_LENGTHS_CM,
+  VARIANT_WEIGHTS_G,
+  VARIANT_TEXTURES,
+} from "@/lib/types/webshop";
 import Link from "next/link";
 
 interface ProductFormProps {
   product?: Product;
 }
+
+interface VariantRow {
+  id?: string;
+  lengthCm: number | null;
+  weightG: number | null;
+  texture: HairTexture | null;
+  price: string;
+  stockQuantity: string;
+}
+
+const variantKey = (v: {
+  lengthCm: number | null;
+  weightG: number | null;
+  texture: string | null;
+}) => `${v.lengthCm ?? ""}|${v.weightG ?? ""}|${v.texture ?? ""}`;
+
+// Cjenik kose (duljina × gramaža) — predispuna za nove kombinacije
+const DEFAULT_VARIANT_PRICES: Record<string, string> = {
+  "40|50": "175",
+  "40|60": "210",
+  "50|50": "225",
+  "50|60": "270",
+  "60|50": "275",
+  "60|60": "330",
+};
 
 export function ProductForm({ product }: ProductFormProps) {
   const router = useRouter();
@@ -29,7 +60,101 @@ export function ProductForm({ product }: ProductFormProps) {
     category: product?.category || ("extensions" as ProductCategory),
     description: product?.description || "",
     images: product?.images || [],
+    weightGrams: product?.weightGrams?.toString() || "",
+    hasVariants: product?.hasVariants ?? false,
   });
+
+  const initialVariants: VariantRow[] = (product?.variants || []).map((v) => ({
+    id: v.id,
+    lengthCm: v.lengthCm,
+    weightG: v.weightG,
+    texture: v.texture,
+    price: v.price.toString(),
+    stockQuantity: v.stockQuantity.toString(),
+  }));
+
+  const [variants, setVariants] = useState<VariantRow[]>(initialVariants);
+  const [selectedLengths, setSelectedLengths] = useState<number[]>(() => [
+    ...new Set(initialVariants.map((v) => v.lengthCm).filter((x): x is number => !!x)),
+  ]);
+  const [selectedWeights, setSelectedWeights] = useState<number[]>(() => [
+    ...new Set(initialVariants.map((v) => v.weightG).filter((x): x is number => !!x)),
+  ]);
+  const [selectedTextures, setSelectedTextures] = useState<HairTexture[]>(() => [
+    ...new Set(
+      initialVariants.map((v) => v.texture).filter((x): x is HairTexture => !!x)
+    ),
+  ]);
+
+  // Regenerate the combination matrix from the selected options, keeping the
+  // price/stock of combinations that already exist
+  const regenerateVariants = (
+    lengths: number[],
+    weights: number[],
+    textures: HairTexture[]
+  ) => {
+    const dims = {
+      lengths: lengths.length ? [...lengths].sort((a, b) => a - b) : [null],
+      weights: weights.length ? [...weights].sort((a, b) => a - b) : [null],
+      textures: textures.length
+        ? VARIANT_TEXTURES.filter((t) => textures.includes(t))
+        : [null],
+    };
+
+    setVariants((prev) => {
+      const byKey = new Map(prev.map((v) => [variantKey(v), v]));
+      const next: VariantRow[] = [];
+      for (const lengthCm of dims.lengths) {
+        for (const weightG of dims.weights) {
+          for (const texture of dims.textures) {
+            if (!lengthCm && !weightG && !texture) continue;
+            const key = variantKey({ lengthCm, weightG, texture });
+            const existing = byKey.get(key);
+            next.push(
+              existing || {
+                lengthCm,
+                weightG,
+                texture,
+                price:
+                  DEFAULT_VARIANT_PRICES[`${lengthCm}|${weightG}`] ||
+                  form.price ||
+                  "",
+                stockQuantity: "0",
+              }
+            );
+          }
+        }
+      }
+      return next;
+    });
+  };
+
+  const toggleDimension = <T,>(
+    value: T,
+    selected: T[],
+    setSelected: (v: T[]) => void,
+    dimension: "length" | "weight" | "texture"
+  ) => {
+    const next = selected.includes(value)
+      ? selected.filter((x) => x !== value)
+      : [...selected, value];
+    setSelected(next);
+    regenerateVariants(
+      dimension === "length" ? (next as number[]) : selectedLengths,
+      dimension === "weight" ? (next as number[]) : selectedWeights,
+      dimension === "texture" ? (next as HairTexture[]) : selectedTextures
+    );
+  };
+
+  const updateVariantField = (
+    index: number,
+    field: "price" | "stockQuantity",
+    value: string
+  ) => {
+    setVariants((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
+    );
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -103,19 +228,54 @@ export function ProductForm({ product }: ProductFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (form.hasVariants) {
+      if (variants.length === 0) {
+        alert("Odaberite barem jednu opciju (duljinu, gramažu ili teksturu).");
+        return;
+      }
+      if (variants.some((v) => !v.price || Number(v.price) <= 0)) {
+        alert("Svaka kombinacija mora imati cijenu.");
+        return;
+      }
+    }
+
     setIsSaving(true);
+
+    // For variant products, the base price/stock are derived from the
+    // combinations (base price = lowest, shown as "od X €" in the shop)
+    const variantPrices = variants.map((v) => Number(v.price));
+    const variantStockTotal = variants.reduce(
+      (sum, v) => sum + (Number(v.stockQuantity) || 0),
+      0
+    );
 
     const productData = {
       name: form.name,
       slug: form.slug || generateSlug(form.name),
       description: form.description,
-      price: Number(form.price),
+      price: form.hasVariants ? Math.min(...variantPrices) : Number(form.price),
       originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
       category: form.category,
       images: form.images,
-      inStock: form.inStock,
-      stockQuantity: Number(form.stockQuantity),
+      inStock: form.hasVariants ? variantStockTotal > 0 : form.inStock,
+      stockQuantity: form.hasVariants
+        ? variantStockTotal
+        : Number(form.stockQuantity),
       featured: form.featured,
+      weightGrams: form.weightGrams ? Number(form.weightGrams) : null,
+      hasVariants: form.hasVariants,
+      variants: form.hasVariants
+        ? variants.map((v) => ({
+            id: v.id,
+            lengthCm: v.lengthCm,
+            weightG: v.weightG,
+            texture: v.texture,
+            price: Number(v.price),
+            stockQuantity: Number(v.stockQuantity) || 0,
+            inStock: (Number(v.stockQuantity) || 0) > 0,
+          }))
+        : [],
     };
 
     try {
@@ -302,7 +462,13 @@ export function ProductForm({ product }: ProductFormProps) {
                   setForm((prev) => ({ ...prev, price: e.target.value }))
                 }
                 placeholder="99.99"
-                required
+                required={!form.hasVariants}
+                disabled={form.hasVariants}
+                hint={
+                  form.hasVariants
+                    ? "Automatski: najniža cijena varijante (prikaz 'od X €')"
+                    : undefined
+                }
               />
               <Input
                 label="Stara cijena (€)"
@@ -327,6 +493,201 @@ export function ProductForm({ product }: ProductFormProps) {
                 )}
                 %
               </p>
+            )}
+          </Card>
+
+          {/* Variants (hair options) */}
+          <Card padding="lg">
+            <h2 className="text-lg font-semibold text-primary mb-1">
+              Varijante proizvoda (kosa)
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Za kosu: kupac bira duljinu, gramažu paketa i teksturu. Cijena i
+              zaliha unose se za svaku kombinaciju.
+            </p>
+
+            <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors mb-4">
+              <input
+                type="checkbox"
+                checked={form.hasVariants}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, hasVariants: e.target.checked }))
+                }
+                className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+              />
+              <div>
+                <p className="font-medium text-gray-700">
+                  Ovaj proizvod ima varijante
+                </p>
+                <p className="text-xs text-gray-500">
+                  Kupac mora odabrati kombinaciju prije dodavanja u košaricu
+                </p>
+              </div>
+            </label>
+
+            {form.hasVariants && (
+              <div className="space-y-5">
+                {/* Option pickers */}
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Duljina
+                    </p>
+                    <div className="space-y-2">
+                      {VARIANT_LENGTHS_CM.map((len) => (
+                        <label
+                          key={len}
+                          className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedLengths.includes(len)}
+                            onChange={() =>
+                              toggleDimension(
+                                len,
+                                selectedLengths,
+                                setSelectedLengths,
+                                "length"
+                              )
+                            }
+                            className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+                          />
+                          {len} cm
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Gramaža paketa
+                    </p>
+                    <div className="space-y-2">
+                      {VARIANT_WEIGHTS_G.map((w) => (
+                        <label
+                          key={w}
+                          className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedWeights.includes(w)}
+                            onChange={() =>
+                              toggleDimension(
+                                w,
+                                selectedWeights,
+                                setSelectedWeights,
+                                "weight"
+                              )
+                            }
+                            className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+                          />
+                          {w} g paket
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Tekstura
+                    </p>
+                    <div className="space-y-2">
+                      {VARIANT_TEXTURES.map((tex) => (
+                        <label
+                          key={tex}
+                          className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTextures.includes(tex)}
+                            onChange={() =>
+                              toggleDimension(
+                                tex,
+                                selectedTextures,
+                                setSelectedTextures,
+                                "texture"
+                              )
+                            }
+                            className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+                          />
+                          {TEXTURE_LABELS[tex]}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Combination matrix */}
+                {variants.length > 0 ? (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 font-medium text-gray-600">
+                            Kombinacija
+                          </th>
+                          <th className="text-left px-4 py-2.5 font-medium text-gray-600 w-32">
+                            Cijena (€)
+                          </th>
+                          <th className="text-left px-4 py-2.5 font-medium text-gray-600 w-28">
+                            Zaliha
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {variants.map((v, index) => (
+                          <tr
+                            key={variantKey(v)}
+                            className="border-t border-gray-100"
+                          >
+                            <td className="px-4 py-2 text-gray-700">
+                              {[
+                                v.lengthCm ? `${v.lengthCm} cm` : null,
+                                v.weightG ? `${v.weightG} g` : null,
+                                v.texture ? TEXTURE_LABELS[v.texture] : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </td>
+                            <td className="px-4 py-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={v.price}
+                                onChange={(e) =>
+                                  updateVariantField(index, "price", e.target.value)
+                                }
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                                placeholder="0.00"
+                              />
+                            </td>
+                            <td className="px-4 py-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={v.stockQuantity}
+                                onChange={(e) =>
+                                  updateVariantField(
+                                    index,
+                                    "stockQuantity",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary"
+                                placeholder="0"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
+                    Označite opcije iznad — kombinacije će se automatski
+                    generirati.
+                  </p>
+                )}
+              </div>
             )}
           </Card>
         </div>
@@ -398,16 +759,36 @@ export function ProductForm({ product }: ProductFormProps) {
           {/* Inventory */}
           <Card padding="lg">
             <h2 className="text-lg font-semibold text-primary mb-4">Zaliha</h2>
-            <Input
-              label="Količina na skladištu"
-              type="number"
-              min="0"
-              value={form.stockQuantity}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, stockQuantity: e.target.value }))
-              }
-              placeholder="50"
-            />
+            <div className="space-y-4">
+              {form.hasVariants ? (
+                <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+                  Zaliha se vodi po kombinaciji — unesite je u tablici
+                  varijanti.
+                </p>
+              ) : (
+                <Input
+                  label="Količina na skladištu"
+                  type="number"
+                  min="0"
+                  value={form.stockQuantity}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, stockQuantity: e.target.value }))
+                  }
+                  placeholder="50"
+                />
+              )}
+              <Input
+                label="Težina proizvoda (g)"
+                type="number"
+                min="0"
+                value={form.weightGrams}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, weightGrams: e.target.value }))
+                }
+                placeholder="150"
+                hint="Težina jednog komada s pakiranjem — za budući izračun dostave"
+              />
+            </div>
           </Card>
 
           {/* Actions */}

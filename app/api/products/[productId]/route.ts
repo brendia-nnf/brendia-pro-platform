@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
+import { syncProductVariants, validateVariants } from "@/lib/products/variants";
 
 // GET - Fetch single product
 export async function GET(
@@ -27,11 +28,22 @@ export async function GET(
       specifications: Record<string, unknown>;
       featured: boolean;
       is_published: boolean;
+      weight_grams: number | null;
+      has_variants: boolean;
+      product_variants: Array<{
+        id: string;
+        length_cm: number | null;
+        weight_g: number | null;
+        texture: string | null;
+        price: number;
+        stock_quantity: number;
+        in_stock: boolean;
+      }> | null;
     }
 
     const { data: product, error } = await supabase
       .from("products")
-      .select("*")
+      .select("*, product_variants(*)")
       .eq("id", productId)
       .single() as { data: ProductRow | null; error: unknown };
 
@@ -60,6 +72,24 @@ export async function GET(
         specifications: product.specifications || {},
         featured: product.featured,
         isPublished: product.is_published,
+        weightGrams: product.weight_grams,
+        hasVariants: product.has_variants,
+        variants: (product.product_variants || [])
+          .map((v) => ({
+            id: v.id,
+            lengthCm: v.length_cm,
+            weightG: v.weight_g,
+            texture: v.texture,
+            price: v.price / 100,
+            stockQuantity: v.stock_quantity,
+            inStock: v.in_stock,
+          }))
+          .sort(
+            (a, b) =>
+              (a.lengthCm || 0) - (b.lengthCm || 0) ||
+              (a.weightG || 0) - (b.weightG || 0) ||
+              String(a.texture).localeCompare(String(b.texture))
+          ),
       },
     });
   } catch (error) {
@@ -121,6 +151,25 @@ export async function PUT(
     if (body.specifications !== undefined) updateData.specifications = body.specifications;
     if (body.featured !== undefined) updateData.featured = body.featured;
     if (body.isPublished !== undefined) updateData.is_published = body.isPublished;
+    if (body.weightGrams !== undefined) {
+      updateData.weight_grams = body.weightGrams
+        ? Math.round(Number(body.weightGrams))
+        : null;
+    }
+    if (body.hasVariants !== undefined) updateData.has_variants = body.hasVariants;
+
+    if (body.hasVariants) {
+      if (!Array.isArray(body.variants) || body.variants.length === 0) {
+        return NextResponse.json(
+          { error: "Proizvod s varijantama mora imati barem jednu varijantu" },
+          { status: 400 }
+        );
+      }
+      const variantError = validateVariants(body.variants);
+      if (variantError) {
+        return NextResponse.json({ error: variantError }, { status: 400 });
+      }
+    }
 
     const { error } = await adminClient
       .from("products")
@@ -133,6 +182,18 @@ export async function PUT(
         { error: "Failed to update product" },
         { status: 500 }
       );
+    }
+
+    if (body.variants !== undefined) {
+      const { error: variantsError } = await syncProductVariants(
+        adminClient,
+        productId,
+        body.hasVariants ? body.variants : []
+      );
+      if (variantsError) {
+        console.error("Variant sync error:", variantsError);
+        return NextResponse.json({ error: variantsError }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ success: true });

@@ -1,5 +1,17 @@
 export type ProductCategory = "extensions" | "tools" | "care";
 
+export type HairTexture = "straight" | "wavy" | "curly";
+
+export interface ProductVariant {
+  id: string;
+  lengthCm: number | null;
+  weightG: number | null;
+  texture: HairTexture | null;
+  price: number; // in euros on the client
+  stockQuantity: number;
+  inStock: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -13,11 +25,39 @@ export interface Product {
   stockQuantity: number;
   specifications?: Record<string, string>;
   featured?: boolean;
+  weightGrams?: number | null;
+  hasVariants?: boolean;
+  variants?: ProductVariant[];
 }
 
 export interface CartItem {
   product: Product;
   quantity: number;
+  // Snapshot of the chosen combination for variant products
+  variant?: ProductVariant;
+}
+
+export const TEXTURE_LABELS: Record<HairTexture, string> = {
+  straight: "Ravna",
+  wavy: "Valovita",
+  curly: "Kovrčava",
+};
+
+export const VARIANT_LENGTHS_CM = [40, 50, 60];
+export const VARIANT_WEIGHTS_G = [50, 60];
+export const VARIANT_TEXTURES: HairTexture[] = ["straight", "wavy", "curly"];
+
+// "40 cm · 50 g · Ravna" — used in cart, orders and Monri order info
+export function variantLabel(variant: {
+  lengthCm: number | null;
+  weightG: number | null;
+  texture: HairTexture | null;
+}): string {
+  const parts: string[] = [];
+  if (variant.lengthCm) parts.push(`${variant.lengthCm} cm`);
+  if (variant.weightG) parts.push(`${variant.weightG} g`);
+  if (variant.texture) parts.push(TEXTURE_LABELS[variant.texture]);
+  return parts.join(" · ");
 }
 
 export interface CartState {

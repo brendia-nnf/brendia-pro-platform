@@ -262,7 +262,7 @@ export default function CheckoutPage() {
               </h2>
               <div className="divide-y divide-gray-100">
                 {items.map((item) => (
-                  <CartItem key={item.product.id} item={item} compact />
+                  <CartItem key={`${item.product.id}-${item.variant?.id || "base"}`} item={item} compact />
                 ))}
               </div>
             </Card>

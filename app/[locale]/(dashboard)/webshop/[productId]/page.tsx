@@ -10,6 +10,12 @@ import {
   AddToCartButton,
   ProductGrid,
 } from "@/components/webshop";
+import {
+  VariantPicker,
+  findVariant,
+  isSelectionComplete,
+  type VariantSelection,
+} from "@/components/webshop/VariantPicker";
 import { ArrowLeft, Truck, Shield, RotateCcw } from "lucide-react";
 import type { Product } from "@/lib/types/webshop";
 
@@ -23,6 +29,11 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<VariantSelection>({
+    lengthCm: null,
+    weightG: null,
+    texture: null,
+  });
 
   useEffect(() => {
     async function fetchProduct() {
@@ -99,8 +110,30 @@ export default function ProductPage({ params }: ProductPageProps) {
 
           {/* Info and actions */}
           <div className="space-y-8">
-            <ProductInfo product={product} />
-            <AddToCartButton product={product} />
+            <ProductInfo
+              product={product}
+              selectedVariant={
+                isSelectionComplete(product, selection)
+                  ? findVariant(product, selection)
+                  : undefined
+              }
+            />
+            {product.hasVariants && (product.variants?.length || 0) > 0 && (
+              <VariantPicker
+                product={product}
+                selection={selection}
+                onSelectionChange={setSelection}
+              />
+            )}
+            <AddToCartButton
+              product={product}
+              selectedVariant={
+                isSelectionComplete(product, selection)
+                  ? findVariant(product, selection)
+                  : undefined
+              }
+              awaitingSelection={!isSelectionComplete(product, selection)}
+            />
 
             {/* Trust badges */}
             <Card variant="outline" padding="md">

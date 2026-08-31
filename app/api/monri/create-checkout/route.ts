@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import type { CartItem } from "@/lib/types/webshop";
-import { SHIPPING_THRESHOLD, SHIPPING_COST } from "@/lib/types/webshop";
+import { SHIPPING_THRESHOLD, SHIPPING_COST, variantLabel } from "@/lib/types/webshop";
 import {
   MONRI_CONFIG,
   generateOrderNumber,
@@ -76,20 +76,54 @@ export async function POST(request: NextRequest) {
       // Guest checkout stays possible
     }
 
-    // Validate stock before creating the order
+    // Validate stock and resolve authoritative prices from the database
+    // (never trust prices sent by the client)
     const productIds = items.map((item) => item.product.id);
     const { data: stockRows } = await supabase
       .from("products")
-      .select("id, name, in_stock, stock_quantity, track_inventory")
+      .select("id, name, price, in_stock, stock_quantity, track_inventory, has_variants")
       .in("id", productIds) as {
         data: Array<{
           id: string;
           name: string;
+          price: number;
           in_stock: boolean;
           stock_quantity: number;
           track_inventory: boolean;
+          has_variants: boolean;
         }> | null;
       };
+
+    const variantIds = items
+      .map((item) => item.variant?.id)
+      .filter((id): id is string => !!id);
+    const { data: variantRows } = variantIds.length
+      ? ((await supabase
+          .from("product_variants")
+          .select("id, product_id, length_cm, weight_g, texture, price, stock_quantity, in_stock")
+          .in("id", variantIds)) as {
+          data: Array<{
+            id: string;
+            product_id: string;
+            length_cm: number | null;
+            weight_g: number | null;
+            texture: string | null;
+            price: number;
+            stock_quantity: number;
+            in_stock: boolean;
+          }> | null;
+        })
+      : { data: [] };
+
+    // Per-line resolved data: unit price in euros + display label
+    const resolvedItems: Array<{
+      productId: string;
+      variantId: string | null;
+      name: string;
+      optionsLabel: string | null;
+      unitPrice: number;
+      quantity: number;
+    }> = [];
 
     for (const item of items) {
       const product = stockRows?.find((p) => p.id === item.product.id);
@@ -99,24 +133,68 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (
-        !product.in_stock ||
-        (product.track_inventory && product.stock_quantity < item.quantity)
-      ) {
-        return NextResponse.json(
-          {
-            error: product.track_inventory && product.stock_quantity > 0
-              ? `Proizvod "${product.name}" — na skladištu je još ${product.stock_quantity} kom`
-              : `Proizvod "${product.name}" nema na skladištu`,
-          },
-          { status: 400 }
+
+      if (product.has_variants) {
+        const variant = (variantRows || []).find(
+          (v) => v.id === item.variant?.id && v.product_id === product.id
         );
+        if (!variant) {
+          return NextResponse.json(
+            { error: `Odabrana kombinacija proizvoda "${product.name}" više nije dostupna` },
+            { status: 400 }
+          );
+        }
+        const label = variantLabel({
+          lengthCm: variant.length_cm,
+          weightG: variant.weight_g,
+          texture: variant.texture as "straight" | "wavy" | "curly" | null,
+        });
+        if (!variant.in_stock || variant.stock_quantity < item.quantity) {
+          return NextResponse.json(
+            {
+              error: variant.stock_quantity > 0
+                ? `Proizvod "${product.name}" (${label}) — na skladištu je još ${variant.stock_quantity} kom`
+                : `Proizvod "${product.name}" (${label}) nema na skladištu`,
+            },
+            { status: 400 }
+          );
+        }
+        resolvedItems.push({
+          productId: product.id,
+          variantId: variant.id,
+          name: product.name,
+          optionsLabel: label,
+          unitPrice: variant.price / 100,
+          quantity: item.quantity,
+        });
+      } else {
+        if (
+          !product.in_stock ||
+          (product.track_inventory && product.stock_quantity < item.quantity)
+        ) {
+          return NextResponse.json(
+            {
+              error: product.track_inventory && product.stock_quantity > 0
+                ? `Proizvod "${product.name}" — na skladištu je još ${product.stock_quantity} kom`
+                : `Proizvod "${product.name}" nema na skladištu`,
+            },
+            { status: 400 }
+          );
+        }
+        resolvedItems.push({
+          productId: product.id,
+          variantId: null,
+          name: product.name,
+          optionsLabel: null,
+          unitPrice: product.price / 100,
+          quantity: item.quantity,
+        });
       }
     }
 
-    // Calculate subtotal (items are already in euros from frontend)
-    const subtotal = items.reduce(
-      (sum, item) => sum + item.product.price * item.quantity,
+    // Calculate subtotal in euros from DB-resolved prices
+    const subtotal = resolvedItems.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity,
       0
     );
 
@@ -163,13 +241,16 @@ export async function POST(request: NextRequest) {
       attempts++;
     }
 
-    // Prepare items JSON for storage
-    const itemsJson = items.map((item) => ({
-      productId: item.product.id,
-      name: item.product.name,
-      price: item.product.price,
+    // Prepare items JSON for storage (options baked into the name so every
+    // existing order view shows the chosen combination)
+    const itemsJson = resolvedItems.map((item) => ({
+      productId: item.productId,
+      variantId: item.variantId,
+      name: item.optionsLabel ? `${item.name} (${item.optionsLabel})` : item.name,
+      options: item.optionsLabel,
+      price: item.unitPrice,
       quantity: item.quantity,
-      subtotal: item.product.price * item.quantity,
+      subtotal: item.unitPrice * item.quantity,
     }));
 
     // Create order in database with pending status
@@ -214,7 +295,7 @@ export async function POST(request: NextRequest) {
 
     // Build Monri form data
     // Generate order info string
-    const itemNames = items.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
+    const itemNames = itemsJson.map((item) => `${item.name} x${item.quantity}`).join(", ");
     const orderInfo = itemNames.length > 100
       ? itemNames.substring(0, 97) + "..."
       : itemNames;

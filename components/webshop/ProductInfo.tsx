@@ -1,14 +1,19 @@
 "use client";
 
 import { Badge } from "@/components/ui";
-import { CATEGORY_LABELS, type Product } from "@/lib/types/webshop";
+import {
+  CATEGORY_LABELS,
+  type Product,
+  type ProductVariant,
+} from "@/lib/types/webshop";
 import { Check, X } from "lucide-react";
 
 interface ProductInfoProps {
   product: Product;
+  selectedVariant?: ProductVariant;
 }
 
-export function ProductInfo({ product }: ProductInfoProps) {
+export function ProductInfo({ product, selectedVariant }: ProductInfoProps) {
   const discount = product.originalPrice
     ? Math.round(
         ((product.originalPrice - product.price) / product.originalPrice) * 100
@@ -21,6 +26,11 @@ export function ProductInfo({ product }: ProductInfoProps) {
       currency: "EUR",
     }).format(price);
   };
+
+  const hasVariants = product.hasVariants && (product.variants?.length || 0) > 0;
+  const displayPrice = selectedVariant ? selectedVariant.price : product.price;
+  const showFromPrefix = hasVariants && !selectedVariant;
+  const stockSource = selectedVariant || product;
 
   return (
     <div className="space-y-6">
@@ -38,9 +48,10 @@ export function ProductInfo({ product }: ProductInfoProps) {
       {/* Price */}
       <div className="flex items-baseline gap-3">
         <span className="text-3xl font-semibold text-primary">
-          {formatPrice(product.price)}
+          {showFromPrefix && <span className="text-xl font-normal">od </span>}
+          {formatPrice(displayPrice)}
         </span>
-        {product.originalPrice && (
+        {!hasVariants && product.originalPrice && (
           <>
             <span className="text-xl text-gray-400 line-through">
               {formatPrice(product.originalPrice)}
@@ -52,23 +63,25 @@ export function ProductInfo({ product }: ProductInfoProps) {
         )}
       </div>
 
-      {/* Stock status */}
-      <div className="flex items-center gap-2">
-        {product.inStock ? (
-          <>
-            <Check className="h-5 w-5 text-success" />
-            <span className="text-success font-medium">Na skladištu</span>
-            <span className="text-gray-500 text-sm">
-              ({product.stockQuantity} kom)
-            </span>
-          </>
-        ) : (
-          <>
-            <X className="h-5 w-5 text-error" />
-            <span className="text-error font-medium">Nema na skladištu</span>
-          </>
-        )}
-      </div>
+      {/* Stock status — for variant products only once a combination is chosen */}
+      {(!hasVariants || selectedVariant) && (
+        <div className="flex items-center gap-2">
+          {stockSource.inStock ? (
+            <>
+              <Check className="h-5 w-5 text-success" />
+              <span className="text-success font-medium">Na skladištu</span>
+              <span className="text-gray-500 text-sm">
+                ({stockSource.stockQuantity} kom)
+              </span>
+            </>
+          ) : (
+            <>
+              <X className="h-5 w-5 text-error" />
+              <span className="text-error font-medium">Nema na skladištu</span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Description */}
       <div>

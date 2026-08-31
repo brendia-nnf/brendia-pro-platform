@@ -85,7 +85,7 @@ export default function CartPage() {
               <Card variant="outline" padding="md">
                 <div className="divide-y divide-gray-100">
                   {items.map((item) => (
-                    <CartItem key={item.product.id} item={item} />
+                    <CartItem key={`${item.product.id}-${item.variant?.id || "base"}`} item={item} />
                   ))}
                 </div>
               </Card>

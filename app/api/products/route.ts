@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/server";
+import { syncProductVariants, validateVariants } from "@/lib/products/variants";
 
 // GET - Fetch all published products (public)
 export async function GET(request: NextRequest) {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("products")
-      .select("*")
+      .select("*, product_variants(*)")
       .eq("is_published", true)
       .order("sort_order", { ascending: true });
 
@@ -26,6 +27,16 @@ export async function GET(request: NextRequest) {
     }
 
     query = query.limit(limit);
+
+    interface VariantRow {
+      id: string;
+      length_cm: number | null;
+      weight_g: number | null;
+      texture: string | null;
+      price: number;
+      stock_quantity: number;
+      in_stock: boolean;
+    }
 
     interface ProductRow {
       id: string;
@@ -43,6 +54,9 @@ export async function GET(request: NextRequest) {
       stock_quantity: number;
       specifications: Record<string, unknown>;
       featured: boolean;
+      weight_grams: number | null;
+      has_variants: boolean;
+      product_variants: VariantRow[] | null;
     }
 
     const { data: products, error } = await query as { data: ProductRow[] | null; error: unknown };
@@ -72,6 +86,24 @@ export async function GET(request: NextRequest) {
       stockQuantity: p.stock_quantity,
       specifications: p.specifications || {},
       featured: p.featured,
+      weightGrams: p.weight_grams,
+      hasVariants: p.has_variants,
+      variants: (p.product_variants || [])
+        .map((v) => ({
+          id: v.id,
+          lengthCm: v.length_cm,
+          weightG: v.weight_g,
+          texture: v.texture,
+          price: v.price / 100,
+          stockQuantity: v.stock_quantity,
+          inStock: v.in_stock,
+        }))
+        .sort(
+          (a, b) =>
+            (a.lengthCm || 0) - (b.lengthCm || 0) ||
+            (a.weightG || 0) - (b.weightG || 0) ||
+            String(a.texture).localeCompare(String(b.texture))
+        ),
     }));
 
     return NextResponse.json({ products: transformedProducts });
@@ -123,7 +155,23 @@ export async function POST(request: NextRequest) {
       stockQuantity,
       specifications,
       featured,
+      weightGrams,
+      hasVariants,
+      variants,
     } = body;
+
+    if (hasVariants) {
+      if (!Array.isArray(variants) || variants.length === 0) {
+        return NextResponse.json(
+          { error: "Proizvod s varijantama mora imati barem jednu varijantu" },
+          { status: 400 }
+        );
+      }
+      const variantError = validateVariants(variants);
+      if (variantError) {
+        return NextResponse.json({ error: variantError }, { status: 400 });
+      }
+    }
 
     // Validate required fields
     if (!name || !slug || !price || !category) {
@@ -173,6 +221,8 @@ export async function POST(request: NextRequest) {
         specifications: specifications || {},
         featured: featured ?? false,
         is_published: true,
+        weight_grams: weightGrams ? Math.round(Number(weightGrams)) : null,
+        has_variants: hasVariants ?? false,
       } as never)
       .select()
       .single() as { data: ProductResult | null; error: unknown };
@@ -183,6 +233,18 @@ export async function POST(request: NextRequest) {
         { error: "Failed to create product" },
         { status: 500 }
       );
+    }
+
+    if (hasVariants) {
+      const { error: variantsError } = await syncProductVariants(
+        adminClient,
+        product.id,
+        variants
+      );
+      if (variantsError) {
+        console.error("Variant sync error:", variantsError);
+        return NextResponse.json({ error: variantsError }, { status: 500 });
+      }
     }
 
     return NextResponse.json({

@@ -218,13 +218,32 @@ async function handleWebshopCallback(
 
   console.log(`Webshop order ${orderNumber} updated to status: ${newStatus}`);
 
-  // Deduct inventory for each ordered item
+  // Deduct inventory for each ordered item (per-variant when applicable)
   if (isSuccess && Array.isArray(order.items)) {
     for (const item of order.items as Array<{
       productId?: string;
+      variantId?: string | null;
       quantity?: number;
     }>) {
       if (!item.productId || !item.quantity) continue;
+
+      if (item.variantId) {
+        const { error: stockError } = await supabase.rpc(
+          "decrement_variant_stock",
+          {
+            p_variant_id: item.variantId,
+            p_quantity: item.quantity,
+          } as never
+        );
+        if (stockError) {
+          console.error(
+            `Failed to decrement stock for variant ${item.variantId}:`,
+            stockError
+          );
+        }
+        continue;
+      }
+
       const { error: stockError } = await supabase.rpc(
         "decrement_product_stock",
         {

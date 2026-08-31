@@ -27,6 +27,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
     }).format(price);
   };
 
+  const hasVariants = product.hasVariants && (product.variants?.length || 0) > 0;
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -73,18 +75,21 @@ export function ProductCard({ product, className }: ProductCardProps) {
             )}
           </div>
 
-          {/* Quick add button - shows on hover */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleAddToCart}
-              className="opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300"
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Dodaj u košaricu
-            </Button>
-          </div>
+          {/* Quick add button - shows on hover. Variant products need option
+              selection first, so the card just opens the product page. */}
+          {!hasVariants && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAddToCart}
+                className="opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300"
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Dodaj u košaricu
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -100,9 +105,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
           {/* Price */}
           <div className="flex items-baseline gap-2">
             <span className="text-lg font-semibold text-primary">
+              {hasVariants && <span className="text-sm font-normal">od </span>}
               {formatPrice(product.price)}
             </span>
-            {product.originalPrice && (
+            {!hasVariants && product.originalPrice && (
               <span className="text-sm text-gray-400 line-through">
                 {formatPrice(product.originalPrice)}
               </span>

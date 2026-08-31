@@ -5,7 +5,7 @@ import Link from "next/link";
 import { QuantitySelector } from "./QuantitySelector";
 import { useCart } from "@/providers/CartProvider";
 import { Trash2, Package } from "lucide-react";
-import type { CartItem as CartItemType } from "@/lib/types/webshop";
+import { variantLabel, type CartItem as CartItemType } from "@/lib/types/webshop";
 
 interface CartItemProps {
   item: CartItemType;
@@ -14,7 +14,7 @@ interface CartItemProps {
 
 export function CartItem({ item, compact = false }: CartItemProps) {
   const { updateQuantity, removeFromCart } = useCart();
-  const { product, quantity } = item;
+  const { product, quantity, variant } = item;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("hr-HR", {
@@ -23,7 +23,10 @@ export function CartItem({ item, compact = false }: CartItemProps) {
     }).format(price);
   };
 
-  const subtotal = product.price * quantity;
+  const unitPrice = variant ? variant.price : product.price;
+  const subtotal = unitPrice * quantity;
+  const optionsLabel = variant ? variantLabel(variant) : null;
+  const maxQuantity = variant ? variant.stockQuantity : product.stockQuantity;
 
   if (compact) {
     return (
@@ -50,6 +53,9 @@ export function CartItem({ item, compact = false }: CartItemProps) {
           >
             {product.name}
           </Link>
+          {optionsLabel && (
+            <p className="text-xs text-gray-500">{optionsLabel}</p>
+          )}
           <p className="text-xs text-gray-500">Količina: {quantity}</p>
           <p className="text-sm font-medium text-primary mt-1">
             {formatPrice(subtotal)}
@@ -86,17 +92,20 @@ export function CartItem({ item, compact = false }: CartItemProps) {
         >
           {product.name}
         </Link>
+        {optionsLabel && (
+          <p className="text-sm text-gray-500 mt-0.5">{optionsLabel}</p>
+        )}
         <p className="text-sm text-gray-500 mt-1">
-          {formatPrice(product.price)} / kom
+          {formatPrice(unitPrice)} / kom
         </p>
 
         <div className="flex items-center justify-between mt-auto pt-3">
           <QuantitySelector
             quantity={quantity}
             onQuantityChange={(newQuantity) =>
-              updateQuantity(product.id, newQuantity)
+              updateQuantity(product.id, newQuantity, variant?.id)
             }
-            max={product.stockQuantity}
+            max={maxQuantity}
             size="sm"
           />
 
@@ -105,7 +114,7 @@ export function CartItem({ item, compact = false }: CartItemProps) {
               {formatPrice(subtotal)}
             </span>
             <button
-              onClick={() => removeFromCart(product.id)}
+              onClick={() => removeFromCart(product.id, variant?.id)}
               className="p-2 text-gray-400 hover:text-error transition-colors"
               aria-label="Ukloni iz košarice"
             >
