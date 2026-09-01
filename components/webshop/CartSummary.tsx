@@ -86,11 +86,19 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
 
         {/* Checkout button */}
         {showCheckoutButton && items.length > 0 && (
-          <Link href="/webshop/blagajna" className="block mt-4">
-            <Button className="w-full" size="lg">
-              Nastavi na plaćanje
-            </Button>
-          </Link>
+          <>
+            {process.env.NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED === "true" && (
+              <p className="text-xs text-center text-primary/60 mt-4">
+                🛍️ Naručivanje uskoro počinje s radom — plaćanje karticama je
+                u pripremi.
+              </p>
+            )}
+            <Link href="/webshop/blagajna" className="block mt-4">
+              <Button className="w-full" size="lg">
+                Nastavi na plaćanje
+              </Button>
+            </Link>
+          </>
         )}
 
         {/* Trust badge */}

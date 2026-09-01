@@ -6,10 +6,10 @@ import { formatDuration } from "@/lib/utils";
 import {
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Plus,
   Edit2,
   Trash2,
-  GripVertical,
   Video,
   Camera,
   RefreshCw,
@@ -305,6 +305,40 @@ export function CourseEditor() {
     }
   };
 
+  const [reorderingChapter, setReorderingChapter] = useState<string | null>(
+    null
+  );
+
+  const moveChapter = async (
+    level: Level,
+    chapter: Chapter,
+    direction: -1 | 1
+  ) => {
+    const ids = level.chapters.map((c) => c.id);
+    const index = ids.indexOf(chapter.id);
+    const target = index + direction;
+    if (index === -1 || target < 0 || target >= ids.length) return;
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+
+    setReorderingChapter(chapter.id);
+    try {
+      const response = await fetch("/api/admin/chapters/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ levelId: level.id, orderedIds: ids }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to reorder chapters");
+      }
+      await fetchLevels();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to reorder chapters");
+    } finally {
+      setReorderingChapter(null);
+    }
+  };
+
   const fetchLevels = useCallback(async () => {
     try {
       setLoading(true);
@@ -380,10 +414,19 @@ export function CourseEditor() {
 
         return (
           <Card key={level.id} padding="none">
-            {/* Level header */}
-            <button
+            {/* Level header — div, not button: it contains the publish
+                toggle Button and nested buttons are invalid HTML */}
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => toggleLevel(level.id)}
-              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggleLevel(level.id);
+                }
+              }}
+              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 {isExpanded ? (
@@ -432,7 +475,7 @@ export function CourseEditor() {
                   )}
                 </Button>
               </div>
-            </button>
+            </div>
 
             {/* Chapters list */}
             {isExpanded && (
@@ -442,7 +485,37 @@ export function CourseEditor() {
                     key={chapter.id}
                     className="flex items-center gap-4 px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50"
                   >
-                    <GripVertical className="h-5 w-5 text-gray-300 cursor-grab" />
+                    <div className="flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() => moveChapter(level, chapter, -1)}
+                        disabled={
+                          reorderingChapter !== null ||
+                          level.chapters[0]?.id === chapter.id
+                        }
+                        className="text-gray-400 hover:text-primary disabled:opacity-25 disabled:cursor-default"
+                        title="Pomakni gore"
+                      >
+                        {reorderingChapter === chapter.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveChapter(level, chapter, 1)}
+                        disabled={
+                          reorderingChapter !== null ||
+                          level.chapters[level.chapters.length - 1]?.id ===
+                            chapter.id
+                        }
+                        className="text-gray-400 hover:text-primary disabled:opacity-25 disabled:cursor-default"
+                        title="Pomakni dolje"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                    </div>
 
                     <div
                       className={`w-10 h-10 rounded-lg flex items-center justify-center ${

@@ -13,7 +13,7 @@ import {
   PhotoSubmissionPanel,
 } from "@/components/course";
 import type { Chapter, ChapterStatus, ChapterState, PhotoSubmission } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Menu, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, Loader2, FileDown } from "lucide-react";
 
 interface LevelChapterItem {
   id: string;
@@ -48,6 +48,7 @@ interface ChapterData {
   thumbnailUrl: string | null;
   requiresPhotos: boolean;
   hasAccess: boolean;
+  materials?: Array<{ name: string; url: string }>;
   videoUrl?: string;
   progress?: {
     watchPercentage: number;
@@ -291,6 +292,24 @@ export default function CoursePlayerPage() {
           </div>
 
           <p className="text-gray-600 mb-6">{chapter.description}</p>
+
+          {/* Downloadable materials (signed URLs, access-gated by the API) */}
+          {chapter.materials && chapter.materials.length > 0 && (
+            <div className="mb-6 space-y-2">
+              {chapter.materials.map((material) => (
+                <a
+                  key={material.url}
+                  href={material.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border border-secondary/30 bg-secondary/5 px-4 py-2.5 text-sm font-medium text-primary hover:bg-secondary/10 transition-colors"
+                >
+                  <FileDown className="h-4 w-4 text-secondary" />
+                  {material.name}
+                </a>
+              ))}
+            </div>
+          )}
 
           {/* Progress tracker */}
           <ProgressTracker

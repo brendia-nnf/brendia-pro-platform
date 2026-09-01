@@ -61,6 +61,11 @@ const COUNTRY_OPTIONS = [
   { value: "DE", label: "Njemačka" },
 ];
 
+// Ordering paused until Monri production approval — remove the env var
+// (+ redeploy) to re-enable.
+const WEBSHOP_ORDERS_DISABLED =
+  process.env.NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED === "true";
+
 export default function CheckoutPage() {
   const { items, isLoading: cartLoading, getSubtotal } = useCart();
   const { user } = useAuth();
@@ -374,11 +379,21 @@ export default function CheckoutPage() {
               </Card>
             )}
 
+            {/* Ordering paused until Monri production approval */}
+            {WEBSHOP_ORDERS_DISABLED && (
+              <Card variant="outline" padding="md" className="border-secondary/40 bg-secondary/5">
+                <p className="text-sm text-primary/80 text-center">
+                  🛍️ Naručivanje putem web trgovine uskoro počinje s radom —
+                  plaćanje karticama je u pripremi. Hvala na strpljenju!
+                </p>
+              </Card>
+            )}
+
             {/* Payment button */}
             <Button
               onClick={handleCheckout}
               isLoading={isProcessing}
-              disabled={isProcessing}
+              disabled={isProcessing || WEBSHOP_ORDERS_DISABLED}
               size="lg"
               className="w-full"
             >

@@ -28,6 +28,19 @@ interface CheckoutRequest {
 }
 
 export async function POST(request: NextRequest) {
+  // Webshop ordering is paused until Monri production is approved.
+  // Controlled via NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED — remove the env var
+  // (+ redeploy) to re-enable card checkout.
+  if (process.env.NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED === "true") {
+    return NextResponse.json(
+      {
+        error:
+          "Naručivanje putem web trgovine uskoro počinje s radom. Hvala na strpljenju!",
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const body: CheckoutRequest = await request.json();
 

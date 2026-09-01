@@ -3,6 +3,23 @@ import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase/se
 import { generateSignedPlaybackUrl } from "@/lib/mux/client";
 import { getRequestLocale, localized } from "@/lib/i18n/api-locale";
 
+// Downloadable materials per chapter (hardcoded; files live in the private
+// "materials" storage bucket and are served via signed URLs to enrolled
+// students only).
+const CHAPTER_MATERIALS: Record<
+  string,
+  Array<{ name: string; nameEn: string; path: string }>
+> = {
+  // Modul 1. — Consultation and Preparation for work
+  "da10bd42-33a2-478f-9856-b096e2c25c10": [
+    {
+      name: "Obrazac za konzultacije s klijentom (PDF)",
+      nameEn: "Client Consultation Form (PDF)",
+      path: "client-consultation-form.pdf",
+    },
+  ],
+};
+
 // GET - Fetch single chapter with video access
 export async function GET(
   request: NextRequest,
@@ -150,6 +167,24 @@ export async function GET(
           userId: user?.id,
         });
       }
+    }
+
+    // Include downloadable materials (signed URLs, enrolled students only)
+    const chapterMaterials = CHAPTER_MATERIALS[chapterId] || [];
+    if (hasAccess && chapterMaterials.length > 0) {
+      const adminClient = createAdminClient();
+      const { data: signed } = await adminClient.storage
+        .from("materials")
+        .createSignedUrls(chapterMaterials.map((m) => m.path), 3600);
+      const urlByPath = new Map(
+        (signed || []).map((s) => [s.path, s.signedUrl])
+      );
+      response.materials = chapterMaterials
+        .map((m) => ({
+          name: locale === "en" ? m.nameEn : m.name,
+          url: urlByPath.get(m.path) || null,
+        }))
+        .filter((m) => m.url);
     }
 
     // Include signed subtitle (VTT) URLs so the mobile app can render captions

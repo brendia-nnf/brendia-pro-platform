@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocale } from "next-intl";
+import { useAuth } from "@/providers/AuthProvider";
 
 interface VideoPlayerProps {
   title: string;
@@ -49,6 +50,25 @@ export function VideoPlayer({
   const progressRef = useRef<HTMLDivElement>(null);
   const lastProgressUpdateRef = useRef<number>(0);
   const hlsRef = useRef<import("hls.js").default | null>(null);
+
+  // Anti-piracy watermark: the viewer's email drifts across the video so a
+  // screen recording identifies whose account leaked the material.
+  const { user } = useAuth();
+  const WATERMARK_SPOTS = [
+    "top-[8%] left-[6%]",
+    "top-[8%] right-[6%]",
+    "bottom-[18%] right-[8%]",
+    "bottom-[18%] left-[8%]",
+    "top-[45%] left-[38%]",
+  ];
+  const [watermarkSpot, setWatermarkSpot] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setWatermarkSpot((prev) => (prev + 1) % WATERMARK_SPOTS.length);
+    }, 25000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -432,6 +452,24 @@ export function VideoPlayer({
         onPlaying={handlePlaying}
         onClick={togglePlay}
       />
+
+      {/* Watermark: identifies the logged-in viewer on any screen capture */}
+      {user?.email && (
+        <div
+          className={cn(
+            "pointer-events-none select-none absolute z-10 transition-all duration-1000",
+            WATERMARK_SPOTS[watermarkSpot]
+          )}
+          aria-hidden="true"
+        >
+          <span
+            className="text-white/30 text-xs sm:text-sm font-medium tracking-wide"
+            style={{ textShadow: "0 0 4px rgba(0,0,0,0.35)" }}
+          >
+            {user.email} · Brendia Pro®
+          </span>
+        </div>
+      )}
 
       {/* Subtitles: our own cue rendering (no native black box). Sits above
           the control bar while it's visible, drops lower when it hides. */}

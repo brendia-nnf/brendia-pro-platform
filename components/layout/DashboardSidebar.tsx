@@ -176,10 +176,10 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
               {t("contactSupport")}
             </p>
             <a
-              href="mailto:podrska@brendiapro.hr"
+              href="mailto:support@brendiapro.hr"
               className="text-sm font-medium text-secondary hover:text-accent transition-colors"
             >
-              podrska@brendiapro.hr
+              support@brendiapro.hr
             </a>
           </div>
         </div>

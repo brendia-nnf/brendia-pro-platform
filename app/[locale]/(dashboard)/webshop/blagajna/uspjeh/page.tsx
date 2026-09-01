@@ -107,7 +107,7 @@ function SuccessContent() {
         <p className="text-sm text-gray-500 mt-8">
           Imate pitanja?{" "}
           <a
-            href="mailto:podrska@brendiapro.hr"
+            href="mailto:support@brendiapro.hr"
             className="text-secondary hover:underline"
           >
             Kontaktirajte nas
