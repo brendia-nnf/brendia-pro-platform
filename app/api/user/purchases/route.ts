@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       "foundation-certification": "Brendia Pro® Artist",
       "master-certification": "Advanced Brendia Pro® Artist",
       "brendia-pro-artist-1v1": "Brendia Pro® Artist 1v1",
-      "brendia-pro-master-1v1": "Brendia Pro® Master 1v1",
+      "brendia-pro-master-1v1": "Advanced Brendia Pro® Artist 1v1",
       // Legacy short ids (fallback)
       foundation: "Brendia Pro® Artist",
       master: "Advanced Brendia Pro® Artist",
