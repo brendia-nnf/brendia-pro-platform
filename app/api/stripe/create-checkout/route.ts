@@ -3,11 +3,10 @@ import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/se
 import type { CartItem } from "@/lib/types/webshop";
 import { SHIPPING_THRESHOLD, SHIPPING_COST, variantLabel } from "@/lib/types/webshop";
 import {
-  MONRI_CONFIG,
   generateOrderNumber,
-  buildMonriFormData,
-  formatAmountForMonri,
-} from "@/lib/monri/config";
+  createWebshopCheckoutSession,
+  toCents,
+} from "@/lib/stripe/config";
 
 interface CheckoutRequest {
   items: CartItem[];
@@ -28,9 +27,8 @@ interface CheckoutRequest {
 }
 
 export async function POST(request: NextRequest) {
-  // Webshop ordering is paused until Monri production is approved.
-  // Controlled via NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED — remove the env var
-  // (+ redeploy) to re-enable card checkout.
+  // Webshop ordering can be paused via NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED —
+  // remove the env var (+ redeploy) to re-enable card checkout.
   if (process.env.NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED === "true") {
     return NextResponse.json(
       {
@@ -222,7 +220,7 @@ export async function POST(request: NextRequest) {
       const { data: couponResult, error: couponError } = await supabase
         .rpc("validate_coupon", {
           p_code: couponCode.toUpperCase(),
-          p_order_subtotal: formatAmountForMonri(subtotal),
+          p_order_subtotal: toCents(subtotal),
           p_user_id: userId,
         } as never) as { data: Array<{ valid: boolean; discount_amount: number; coupon_id: string }> | null; error: unknown };
 
@@ -284,10 +282,10 @@ export async function POST(request: NextRequest) {
       // Order items
       items: itemsJson,
       // Pricing (store in cents)
-      subtotal: formatAmountForMonri(subtotal),
-      shipping: formatAmountForMonri(shipping),
-      discount: formatAmountForMonri(discount),
-      total: formatAmountForMonri(total),
+      subtotal: toCents(subtotal),
+      shipping: toCents(shipping),
+      discount: toCents(discount),
+      total: toCents(total),
       currency: "eur",
       // Coupon
       coupon_code: couponCode || null,
@@ -306,38 +304,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build Monri form data
-    // Generate order info string
-    const itemNames = itemsJson.map((item) => `${item.name} x${item.quantity}`).join(", ");
-    const orderInfo = itemNames.length > 100
-      ? itemNames.substring(0, 97) + "..."
-      : itemNames;
-
-    const monriFormData = buildMonriFormData({
+    // Create the hosted Stripe Checkout Session. The Stripe total
+    // (items + shipping − discount) equals webshop_orders.total by
+    // construction — all three inputs come from the same resolved data.
+    const session = await createWebshopCheckoutSession({
       orderNumber,
-      amount: formatAmountForMonri(total), // Total in cents
-      currency: "EUR",
-      customerName: shippingFullName,
-      email: customerEmail,
-      phone: customerPhone || shippingPhone || "",
-      address: shippingStreet,
-      city: shippingCity,
-      postalCode: shippingPostalCode,
-      country: shippingCountry,
-      orderInfo: `Brendia Pro Webshop - ${orderInfo}`,
-      customData: JSON.stringify({
-        type: "webshop",
-        itemCount: items.length,
-        couponCode: couponCode || null,
-      }),
-      language: "hr",
-      successPath: "/webshop/blagajna/uspjeh",
-      cancelPath: "/webshop/kosarica",
+      items: resolvedItems,
+      shipping,
+      discount,
+      customerEmail,
     });
 
+    await supabase
+      .from("webshop_orders")
+      .update({ stripe_session_id: session.id } as never)
+      .eq("order_number", orderNumber);
+
     return NextResponse.json({
-      formUrl: MONRI_CONFIG.formUrl,
-      formData: monriFormData,
+      url: session.url,
       orderNumber,
       pricing: {
         subtotal,

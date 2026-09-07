@@ -130,9 +130,11 @@ export async function POST(request: NextRequest) {
       amount: number;
       currency: string;
       paid_at: string | null;
-      monri_transaction_id: string | null;
-      monri_approval_code: string | null;
-      monri_response_code: string | null;
+      stripe_session_id: string | null;
+      stripe_payment_intent: string | null;
+      stripe_subscription_id: string | null;
+      payment_plan: string | null;
+      fully_paid_at: string | null;
     }
 
     // Find order by enrollment token
@@ -237,9 +239,11 @@ export async function POST(request: NextRequest) {
       amount_paid: order.amount,
       currency: order.currency,
       order_number: order.order_number,
-      monri_transaction_id: order.monri_transaction_id,
-      monri_approval_code: order.monri_approval_code,
-      monri_response_code: order.monri_response_code,
+      stripe_session_id: order.stripe_session_id,
+      stripe_payment_intent: order.stripe_payment_intent,
+      stripe_subscription_id: order.stripe_subscription_id,
+      payment_plan: order.payment_plan || "full",
+      fully_paid_at: order.fully_paid_at,
       purchased_at: order.paid_at || new Date().toISOString(),
       expires_at: null, // Lifetime access
     } as never);

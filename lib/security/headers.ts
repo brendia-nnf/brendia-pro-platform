@@ -23,16 +23,16 @@ export const securityHeaders = {
   // Content Security Policy
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-    "frame-src 'self' https://ipgtest.monri.com https://ipg.monri.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com",
+    "frame-src 'self' https://js.stripe.com",
     "media-src 'self' https: blob:",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self' https://ipgtest.monri.com https://ipg.monri.com",
+    "form-action 'self' https://checkout.stripe.com",
     "frame-ancestors 'none'",
   ].join("; "),
 };

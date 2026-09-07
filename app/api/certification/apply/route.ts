@@ -16,6 +16,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Installment buyers must settle all installments before certification
+    // can be requested (access is granted from installment 1, the diploma
+    // only once fully paid). Full-payment and legacy enrollments are
+    // unaffected — only an unfinished installment plan blocks.
+    const { data: enrollmentRows } = await adminClient
+      .from("enrollments")
+      .select("payment_plan, fully_paid_at, status")
+      .eq("user_id", user.id) as {
+        data: Array<{
+          payment_plan: string | null;
+          fully_paid_at: string | null;
+          status: string;
+        }> | null;
+      };
+
+    const blockingEnrollment = (enrollmentRows || []).find(
+      (e) =>
+        e.status === "suspended" ||
+        (e.payment_plan === "installments" && !e.fully_paid_at)
+    );
+
+    if (blockingEnrollment) {
+      return NextResponse.json(
+        {
+          error:
+            "Certifikacija je dostupna nakon što su sve rate plaćene u cijelosti.",
+        },
+        { status: 403 }
+      );
+    }
+
     interface CertificationRow {
       id: string;
       status: string;

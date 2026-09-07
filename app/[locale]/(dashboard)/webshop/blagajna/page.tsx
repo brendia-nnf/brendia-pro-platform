@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Container, Card, Button, Input } from "@/components/ui";
 import { CartItem, CartSummary } from "@/components/webshop";
@@ -28,28 +28,6 @@ interface FormErrors {
   email?: string;
 }
 
-interface MonriFormData {
-  authenticity_token: string;
-  order_number: string;
-  amount: string;
-  currency: string;
-  digest: string;
-  transaction_type: string;
-  success_url_override: string;
-  cancel_url_override: string;
-  callback_url: string;
-  ch_full_name: string;
-  ch_email: string;
-  ch_phone: string;
-  ch_address: string;
-  ch_city: string;
-  ch_zip: string;
-  ch_country: string;
-  language?: string;
-  order_info?: string;
-  custom_data?: string;
-}
-
 const COUNTRY_OPTIONS = [
   { value: "HR", label: "Hrvatska" },
   { value: "SI", label: "Slovenija" },
@@ -61,8 +39,8 @@ const COUNTRY_OPTIONS = [
   { value: "DE", label: "Njemačka" },
 ];
 
-// Ordering paused until Monri production approval — remove the env var
-// (+ redeploy) to re-enable.
+// Ordering can be paused via env — remove the env var (+ redeploy)
+// to re-enable.
 const WEBSHOP_ORDERS_DISABLED =
   process.env.NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED === "true";
 
@@ -72,11 +50,6 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
-  const monriFormRef = useRef<HTMLFormElement>(null);
-  const [monriData, setMonriData] = useState<{
-    formUrl: string;
-    formData: MonriFormData;
-  } | null>(null);
 
   const [shippingForm, setShippingForm] = useState<ShippingForm>({
     fullName: "",
@@ -158,7 +131,7 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/monri/create-checkout", {
+      const response = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -184,17 +157,9 @@ export default function CheckoutPage() {
         throw new Error(data.error || "Došlo je do greške");
       }
 
-      // Set Monri form data and submit
-      if (data.formUrl && data.formData) {
-        setMonriData({
-          formUrl: data.formUrl,
-          formData: data.formData,
-        });
-
-        // Wait for state update, then submit the hidden form
-        setTimeout(() => {
-          monriFormRef.current?.submit();
-        }, 100);
+      // Redirect to the hosted Stripe Checkout page
+      if (data.url) {
+        window.location.href = data.url;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Došlo je do greške");
@@ -379,7 +344,7 @@ export default function CheckoutPage() {
               </Card>
             )}
 
-            {/* Ordering paused until Monri production approval */}
+            {/* Ordering paused via NEXT_PUBLIC_WEBSHOP_ORDERS_DISABLED */}
             {WEBSHOP_ORDERS_DISABLED && (
               <Card variant="outline" padding="md" className="border-secondary/40 bg-secondary/5">
                 <p className="text-sm text-primary/80 text-center">
@@ -404,7 +369,7 @@ export default function CheckoutPage() {
             {/* Trust info */}
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
               <Lock className="h-4 w-4" />
-              <span>Plaćanje je sigurno i zaštićeno putem Monri</span>
+              <span>Plaćanje je sigurno i zaštićeno putem Stripe</span>
             </div>
           </div>
 
@@ -416,42 +381,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-
-      {/* Hidden Monri Form */}
-      {monriData && (
-        <form
-          ref={monriFormRef}
-          method="POST"
-          action={monriData.formUrl}
-          style={{ display: "none" }}
-        >
-          <input type="hidden" name="authenticity_token" value={monriData.formData.authenticity_token} />
-          <input type="hidden" name="order_number" value={monriData.formData.order_number} />
-          <input type="hidden" name="amount" value={monriData.formData.amount} />
-          <input type="hidden" name="currency" value={monriData.formData.currency} />
-          <input type="hidden" name="digest" value={monriData.formData.digest} />
-          <input type="hidden" name="transaction_type" value={monriData.formData.transaction_type} />
-          <input type="hidden" name="success_url_override" value={monriData.formData.success_url_override} />
-          <input type="hidden" name="cancel_url_override" value={monriData.formData.cancel_url_override} />
-          <input type="hidden" name="callback_url" value={monriData.formData.callback_url} />
-          <input type="hidden" name="ch_full_name" value={monriData.formData.ch_full_name} />
-          <input type="hidden" name="ch_email" value={monriData.formData.ch_email} />
-          <input type="hidden" name="ch_phone" value={monriData.formData.ch_phone} />
-          <input type="hidden" name="ch_address" value={monriData.formData.ch_address} />
-          <input type="hidden" name="ch_city" value={monriData.formData.ch_city} />
-          <input type="hidden" name="ch_zip" value={monriData.formData.ch_zip} />
-          <input type="hidden" name="ch_country" value={monriData.formData.ch_country} />
-          {monriData.formData.language && (
-            <input type="hidden" name="language" value={monriData.formData.language} />
-          )}
-          {monriData.formData.order_info && (
-            <input type="hidden" name="order_info" value={monriData.formData.order_info} />
-          )}
-          {monriData.formData.custom_data && (
-            <input type="hidden" name="custom_data" value={monriData.formData.custom_data} />
-          )}
-        </form>
-      )}
     </Container>
   );
 }
