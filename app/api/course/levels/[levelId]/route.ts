@@ -93,11 +93,16 @@ export async function GET(
       // coaching products give platform access but not the recorded course.
       // Consider all active enrollments so a student who owns both a course
       // and a 1v1 keeps their course access.
+      // Course access runs out at expires_at (12 months); legacy rows
+      // without an expiry keep access.
       const { data: enrollments } = await supabase
         .from("enrollments")
         .select("package, grants_course_access")
         .eq("user_id", user.id)
-        .eq("status", "active") as { data: EnrollmentRow[] | null };
+        .eq("status", "active")
+        .or(
+          `expires_at.is.null,expires_at.gt.${new Date().toISOString()}`
+        ) as { data: EnrollmentRow[] | null };
 
       const courseEnrollments = (enrollments || []).filter(
         (e) => e.grants_course_access

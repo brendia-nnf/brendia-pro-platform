@@ -245,7 +245,10 @@ export async function POST(request: NextRequest) {
       payment_plan: order.payment_plan || "full",
       fully_paid_at: order.fully_paid_at,
       purchased_at: order.paid_at || new Date().toISOString(),
-      expires_at: null, // Lifetime access
+      // Course access lasts 12 months from activation
+      expires_at: new Date(
+        Date.now() + 365 * 24 * 60 * 60 * 1000
+      ).toISOString(),
     } as never);
 
     if (enrollmentError) {

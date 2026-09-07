@@ -110,12 +110,14 @@ export async function GET(request: NextRequest) {
         status: string;
       }
 
-      // Fetch enrollment
+      // Fetch enrollment (course access runs out at expires_at — 12 months;
+      // legacy rows without an expiry keep access)
       const { data: enrollmentData } = await supabase
         .from("enrollments")
         .select("*")
         .eq("user_id", user.id)
         .eq("status", "active")
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order("purchased_at", { ascending: false })
         .limit(1)
         .single() as { data: EnrollmentRow | null };
