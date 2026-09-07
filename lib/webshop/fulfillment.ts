@@ -252,5 +252,25 @@ export async function fulfillWebshopOrder(
     }
   }
 
+  // Admin notification for every paid webshop order
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (adminEmail) {
+    try {
+      const itemLines = (Array.isArray(order.items) ? order.items : [])
+        .map((i) => {
+          const it = i as { name?: string; quantity?: number };
+          return `<li>${it.name} × ${it.quantity}</li>`;
+        })
+        .join("");
+      await sendEmail({
+        to: adminEmail,
+        subject: `Nova webshop narudžba ${orderNumber} — ${(order.total / 100).toFixed(2)} €`,
+        html: `<p>Naplaćena je webshop narudžba <strong>${orderNumber}</strong>.</p><p>Kupac: ${order.customer_name} (${order.customer_email})</p><ul>${itemLines}</ul><p>Ukupno: ${(order.total / 100).toFixed(2)} € — detalji u Stripe dashboardu i admin panelu.</p>`,
+      });
+    } catch (adminEmailError) {
+      console.error("Failed to send admin order notification:", adminEmailError);
+    }
+  }
+
   return { ok: true };
 }
