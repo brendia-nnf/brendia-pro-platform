@@ -27,8 +27,8 @@ export function CertificateDownload({
   const handleShare = () => {
     if (navigator.share && certificateNumber) {
       navigator.share({
-        title: "Brendia Pro Certificate",
-        text: `I am now a certified Brendia Pro Artist! Certificate #${certificateNumber}`,
+        title: "Brendia Pro® Certificate",
+        text: `I am now a certified Brendia Pro® Artist! Certificate #${certificateNumber}`,
         url: window.location.href,
       }).catch(() => {
         // User cancelled or error - do nothing

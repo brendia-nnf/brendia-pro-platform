@@ -220,7 +220,7 @@ export default function ActivatePage({
           <Link href="/">
             <Image
               src="/images/logo.png"
-              alt="Brendia Pro"
+              alt="Brendia Pro®"
               width={150}
               height={50}
               className="mx-auto"

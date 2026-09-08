@@ -365,7 +365,7 @@
   },
   "messages": {
     "title": "Poruke",
-    "subtitle": "Komunikacija s Brendia Pro timom",
+    "subtitle": "Komunikacija s Brendia Pro® timom",
     "newTicket": "Nova poruka",
     "subjectLabel": "Naslov",
     "subjectPlaceholder": "Ukratko opišite temu",
@@ -379,7 +379,7 @@
     "notFound": "Poruka nije pronađena",
     "backToMessages": "Natrag na poruke",
     "replyPlaceholder": "Napišite poruku…",
-    "teamSender": "Brendia Pro tim",
+    "teamSender": "Brendia Pro® tim",
     "youSender": "Vi",
     "status": {
       "open": "Čeka odgovor",

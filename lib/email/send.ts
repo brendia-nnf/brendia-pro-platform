@@ -71,7 +71,7 @@ import {
 export async function sendWelcomeEmail(to: string, name: string) {
   return sendEmail({
     to,
-    subject: "Dobro dosli u Brendia Pro!",
+    subject: "Dobro dosli u Brendia Pro®!",
     html: welcomeEmail(name),
   });
 }
@@ -83,7 +83,7 @@ export async function sendVerificationEmail(
 ) {
   return sendEmail({
     to,
-    subject: "Potvrdite svoju email adresu - Brendia Pro",
+    subject: "Potvrdite svoju email adresu - Brendia Pro®",
     html: verificationEmail(name, verifyUrl),
   });
 }
@@ -95,7 +95,7 @@ export async function sendPasswordResetEmail(
 ) {
   return sendEmail({
     to,
-    subject: "Promjena lozinke - Brendia Pro",
+    subject: "Promjena lozinke - Brendia Pro®",
     html: passwordResetEmail(name, resetUrl),
   });
 }
@@ -142,7 +142,7 @@ export async function sendCertificationRejected(
 export async function sendContactConfirmation(to: string, name: string) {
   return sendEmail({
     to,
-    subject: "Primili smo vasu poruku - Brendia Pro",
+    subject: "Primili smo vasu poruku - Brendia Pro®",
     html: contactConfirmationEmail(name),
   });
 }
@@ -209,7 +209,7 @@ export async function sendEnrollmentActivation(
 ) {
   return sendEmail({
     to,
-    subject: `Aktivirajte pristup: ${courseName} - Brendia Pro`,
+    subject: `Aktivirajte pristup: ${courseName} - Brendia Pro®`,
     html: enrollmentActivationEmail(name, courseName, activationUrl, orderNumber),
   });
 }
@@ -221,7 +221,7 @@ export async function sendNewMessageNotification(
 ) {
   return sendEmail({
     to,
-    subject: `Nova poruka od Brendia Pro tima`,
+    subject: `Nova poruka od Brendia Pro® tima`,
     html: newMessageEmail(name, subject),
   });
 }

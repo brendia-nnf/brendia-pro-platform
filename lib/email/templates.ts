@@ -13,7 +13,7 @@ export function baseTemplate(content: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brendia Pro</title>
+  <title>Brendia Pro&reg;</title>
   <style>
     body {
       margin: 0;
@@ -93,20 +93,20 @@ export function baseTemplate(content: string): string {
 <body>
   <div class="container">
     <div class="header">
-      <img src="https://brendiapro.hr/images/logo-white.png" alt="Brendia Pro" />
+      <img src="https://brendiapro.hr/images/logo-white.png" alt="Brendia Pro&reg;" />
     </div>
     <div class="content">
       ${content}
     </div>
     <div class="footer">
-      <p><strong>Brendia Pro</strong></p>
+      <p><strong>Brendia Pro&reg;</strong></p>
       <p>Premium Hair Extension Education</p>
       <div class="social-links">
         <a href="https://instagram.com/brendiapro">Instagram</a>
       </div>
       <div class="divider"></div>
       <p style="font-size: 12px; color: #999;">
-        &copy; ${new Date().getFullYear()} Brendia Pro. Sva prava pridrzana.
+        &copy; ${new Date().getFullYear()} Brendia Pro&reg;. Sva prava pridrzana.
       </p>
     </div>
   </div>
@@ -118,22 +118,22 @@ export function baseTemplate(content: string): string {
 // Welcome email after registration
 export function welcomeEmail(name: string): string {
   return baseTemplate(`
-    <h1>Dobro dosli u Brendia Pro!</h1>
+    <h1>Dobro dosli u Brendia Pro&reg;!</h1>
     <p>Draga ${name},</p>
-    <p>Hvala vam sto ste se pridruzili Brendia Pro obitelji! Uzbudeni smo sto vas mozemo pozdraviti kao novog clana nase zajednice.</p>
-    <p>Brendia Pro je vase putovanje prema majstorstvu u tehnici weft ekstenzija. Nasa platforma vam pruza pristup ekskluzivnim video lekcijama, strucnim savjetima i certifikaciji koja ce vas izdvojiti u industriji.</p>
+    <p>Hvala vam sto ste se pridruzili Brendia Pro&reg; obitelji! Uzbudeni smo sto vas mozemo pozdraviti kao novog clana nase zajednice.</p>
+    <p>Brendia Pro&reg; je vase putovanje prema majstorstvu u tehnici weft ekstenzija. Nasa platforma vam pruza pristup ekskluzivnim video lekcijama, strucnim savjetima i certifikaciji koja ce vas izdvojiti u industriji.</p>
     <div class="highlight">
       <p><strong>Sto mozete ocekivati:</strong></p>
       <ul>
         <li>Visokokvalitetne video lekcije</li>
         <li>Korak-po-korak upute</li>
-        <li>Pristup Brendia Pro zajednici</li>
+        <li>Pristup Brendia Pro&reg; zajednici</li>
         <li>Mogucnost certificiranja</li>
       </ul>
     </div>
     <a href="${PLATFORM_URL}/hr/dashboard" class="button">Pristupite platformi</a>
     <p>Ako imate bilo kakvih pitanja, slobodno nas kontaktirajte.</p>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -144,7 +144,7 @@ export function verificationEmail(name: string, verifyUrl: string): string {
     <p>Draga ${name},</p>
     <p>Hvala vam na registraciji! Molimo vas da potvrdite svoju email adresu klikom na gumb ispod.</p>
     <a href="${verifyUrl}" class="button">Potvrdi email</a>
-    <p>Ako niste kreirali racun na Brendia Pro, mozete ignorirati ovaj email.</p>
+    <p>Ako niste kreirali racun na Brendia Pro&reg;, mozete ignorirati ovaj email.</p>
     <p style="font-size: 12px; color: #666;">Link istjece za 24 sata.</p>
   `);
 }
@@ -154,7 +154,7 @@ export function passwordResetEmail(name: string, resetUrl: string): string {
   return baseTemplate(`
     <h1>Zahtjev za promjenu lozinke</h1>
     <p>Draga ${name},</p>
-    <p>Primili smo zahtjev za promjenu lozinke vaseg Brendia Pro racuna. Kliknite na gumb ispod za postavljanje nove lozinke.</p>
+    <p>Primili smo zahtjev za promjenu lozinke vaseg Brendia Pro&reg; racuna. Kliknite na gumb ispod za postavljanje nove lozinke.</p>
     <a href="${resetUrl}" class="button">Postavi novu lozinku</a>
     <p>Ako niste zatrazili promjenu lozinke, mozete ignorirati ovaj email. Vasa trenutna lozinka ostaje nepromijenjena.</p>
     <p style="font-size: 12px; color: #666;">Link istjece za 1 sat.</p>
@@ -187,7 +187,7 @@ export function purchaseConfirmationEmail(
       <li>Pristupite video lekcijama putem nase platforme</li>
       <li>Pridruzite se nasoj zajednici za dodatnu podrsku</li>
     </ul>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -206,10 +206,10 @@ export function certificationApprovedEmail(
       <p>Broj certifikata: ${certificateNumber}</p>
       <p>Datum izdavanja: ${new Date().toLocaleDateString("hr-HR")}</p>
     </div>
-    <p>Sada ste sluzbeno certificirani Brendia Pro umjetnik! Mozete preuzeti svoj certifikat klikom na gumb ispod.</p>
+    <p>Sada ste sluzbeno certificirani Brendia Pro&reg; umjetnik! Mozete preuzeti svoj certifikat klikom na gumb ispod.</p>
     <a href="${downloadUrl}" class="button">Preuzmi certifikat</a>
     <p>Zelimo vam puno uspjeha u daljnjem radu!</p>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -225,7 +225,7 @@ export function certificationRejectedEmail(name: string, reason: string): string
     </div>
     <p>Molimo vas da pregledate materijale i pokusate ponovno kada budete spremni. Ako imate pitanja, slobodno nas kontaktirajte.</p>
     <a href="${PLATFORM_URL}/hr/tecaj" class="button">Nastavi ucenje</a>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -236,7 +236,7 @@ export function contactConfirmationEmail(name: string): string {
     <p>Postovani/a ${name},</p>
     <p>Hvala vam sto ste nas kontaktirali! Primili smo vasu poruku i odgovorit cemo vam u najkracemu mogucemu roku.</p>
     <p>Obicno odgovaramo unutar 24-48 sati radnim danima.</p>
-    <p>Srdacan pozdrav,<br>Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -264,7 +264,7 @@ export function welcomeBoxShippedEmail(name: string, trackingNumber: string): st
   return baseTemplate(`
     <h1>Vas Welcome Box je poslan!</h1>
     <p>Draga ${name},</p>
-    <p>Uzbudeni smo sto vam mozemo javiti da je vas Brendia Pro Welcome Box upravo poslan!</p>
+    <p>Uzbudeni smo sto vam mozemo javiti da je vas Brendia Pro&reg; Welcome Box upravo poslan!</p>
     <div class="highlight">
       <p><strong>Pracenje posiljke:</strong></p>
       <p>Broj za pracenje: ${trackingNumber}</p>
@@ -272,7 +272,7 @@ export function welcomeBoxShippedEmail(name: string, trackingNumber: string): st
     <p>Ocekivano vrijeme dostave je 3-5 radnih dana.</p>
     <p>U medjuvremenu, mozete poceti s online lekcijama na nasoj platformi.</p>
     <a href="${PLATFORM_URL}/hr/dashboard" class="button">Nastavi ucenje</a>
-    <p>Srdacan pozdrav,<br>Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -301,7 +301,7 @@ export function enrollmentActivationEmail(
     </ul>
     <p style="font-size: 12px; color: #666;">Link za aktivaciju istjece za 7 dana. Ako link istekne, kontaktirajte nas za novi.</p>
     <div class="divider"></div>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -316,7 +316,7 @@ export function photoSubmissionApprovedEmail(
     <p>Nikolina je pregledala fotografije vaseg rada za poglavlje <strong>${chapterTitle}</strong> i rad je <strong>odobren</strong>!</p>
     <p>Nastavite s odlicnim radom - svaki odobreni rad priblizava vas certifikaciji.</p>
     <a href="${PLATFORM_URL}/hr/dashboard" class="button">Nastavi ucenje</a>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -336,7 +336,7 @@ export function photoSubmissionRedoEmail(
     </div>
     <p>Ne brinite - ovo je normalan dio ucenja! Pogledajte video ponovno, primijenite povratnu informaciju i posaljite nove fotografije (sprijeda, s lijeve i desne strane).</p>
     <a href="${PLATFORM_URL}/hr/dashboard" class="button">Posalji nove fotografije</a>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }
 
@@ -345,9 +345,9 @@ export function newMessageEmail(name: string, subject: string): string {
   return baseTemplate(`
     <h1>Nova poruka</h1>
     <p>${name ? `Draga ${name},` : "Pozdrav,"}</p>
-    <p>Imate novu poruku od Brendia Pro tima u vezi: <strong>${subject}</strong></p>
+    <p>Imate novu poruku od Brendia Pro&reg; tima u vezi: <strong>${subject}</strong></p>
     <p>Prijavite se na platformu kako biste procitali poruku i odgovorili.</p>
     <a href="${PLATFORM_URL}/hr/poruke" class="button">Procitaj poruku</a>
-    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro tim</p>
+    <p>Srdacan pozdrav,<br>Nikolina i Brendia Pro&reg; tim</p>
   `);
 }

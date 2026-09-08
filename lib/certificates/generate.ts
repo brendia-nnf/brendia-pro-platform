@@ -41,7 +41,7 @@ export async function generateCertificatePDF(
   const certificateHtml = generateCertificateHTML({
     certificateNumber,
     recipientName: profile.full_name || "Unknown",
-    courseTitle: "Brendia Pro Artist",
+    courseTitle: "Brendia Pro® Artist",
     completionDate: new Date(),
     approvedAt: new Date(),
   });
@@ -269,7 +269,7 @@ function generateCertificateHTML(data: CertificateData): string {
     <p class="course">
       uspješno je završio/la profesionalni tečaj<br>
       <strong>${escapeHtml(data.courseTitle)}</strong><br>
-      i stekao/la certifikat ovlaštenog Brendia Pro Artista
+      i stekao/la certifikat ovlaštenog Brendia Pro&reg; Artista
     </p>
 
     <div class="details">
@@ -283,7 +283,7 @@ function generateCertificateHTML(data: CertificateData): string {
       </div>
       <div class="detail signature">
         <div class="signature-line"></div>
-        <div class="signature-name">Brendia Pro Academy</div>
+        <div class="signature-name">Brendia Pro&reg; Academy</div>
       </div>
     </div>
 

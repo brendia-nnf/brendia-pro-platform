@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     await createNotification({
       userId,
       type: "message",
-      title: "Nova poruka od Brendia Pro tima",
+      title: "Nova poruka od Brendia Pro® tima",
       body: subject,
       link: `/poruke/${ticket.id}`,
     });

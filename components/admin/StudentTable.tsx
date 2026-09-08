@@ -648,7 +648,7 @@ export function StudentTable() {
         title="Status kita"
         description={
           kitStudent
-            ? `Brendia Pro Kit za: ${kitStudent.fullName}`
+            ? `Brendia Pro® Kit za: ${kitStudent.fullName}`
             : ""
         }
       >

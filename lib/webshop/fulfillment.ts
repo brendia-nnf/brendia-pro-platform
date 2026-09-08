@@ -225,12 +225,12 @@ export async function fulfillWebshopOrder(
           try {
             await sendEmail({
               to: order.customer_email,
-              subject: `Račun za narudžbu ${orderNumber} - Brendia Pro`,
+              subject: `Račun za narudžbu ${orderNumber} - Brendia Pro®`,
               html: `
                 <p>Poštovani ${customerFullName},</p>
                 <p>hvala na kupnji! U privitku se nalazi poveznica na račun za Vašu narudžbu <strong>${orderNumber}</strong>.</p>
                 <p><a href="${invoiceResult.pdfLink}">Preuzmite račun (PDF)</a></p>
-                <p>Srdačan pozdrav,<br/>Brendia Pro tim</p>
+                <p>Srdačan pozdrav,<br/>Brendia Pro&reg; tim</p>
               `,
             });
           } catch (emailError) {

@@ -365,7 +365,7 @@
   },
   "messages": {
     "title": "Messages",
-    "subtitle": "Communication with the Brendia Pro team",
+    "subtitle": "Communication with the Brendia Pro® team",
     "newTicket": "New message",
     "subjectLabel": "Subject",
     "subjectPlaceholder": "Briefly describe the topic",
@@ -379,7 +379,7 @@
     "notFound": "Message not found",
     "backToMessages": "Back to messages",
     "replyPlaceholder": "Write a message…",
-    "teamSender": "Brendia Pro team",
+    "teamSender": "Brendia Pro® team",
     "youSender": "You",
     "status": {
       "open": "Awaiting reply",

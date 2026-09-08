@@ -57,7 +57,7 @@ export default function LoginPage() {
       <div className="relative w-full h-[35vh] lg:h-screen lg:w-1/2 xl:w-[55%]">
         <Image
           src="/images/nina-99.jpg"
-          alt="Brendia Pro"
+          alt="Brendia Pro®"
           fill
           className="object-cover object-center"
           priority
@@ -69,7 +69,7 @@ export default function LoginPage() {
         <div className="absolute top-6 left-6 lg:hidden">
           <Image
             src="/images/logo-white.png"
-            alt="Brendia Pro"
+            alt="Brendia Pro®"
             width={120}
             height={40}
             className="h-8 w-auto"
@@ -85,7 +85,7 @@ export default function LoginPage() {
           <Link href="/" className="hidden lg:block">
             <Image
               src="/images/logo.png"
-              alt="Brendia Pro"
+              alt="Brendia Pro®"
               width={140}
               height={47}
               className="h-10 w-auto"
