@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import type { Product, ProductVariant, HairTexture } from "@/lib/types/webshop";
 import { TEXTURE_LABELS } from "@/lib/types/webshop";
 
@@ -8,6 +9,7 @@ export interface VariantSelection {
   lengthCm: number | null;
   weightG: number | null;
   texture: HairTexture | null;
+  color: string | null;
 }
 
 interface VariantPickerProps {
@@ -25,8 +27,22 @@ export function findVariant(
     (v) =>
       (v.lengthCm ?? null) === selection.lengthCm &&
       (v.weightG ?? null) === selection.weightG &&
-      (v.texture ?? null) === selection.texture
+      (v.texture ?? null) === selection.texture &&
+      (v.color ?? null) === selection.color
   );
+}
+
+// The gallery image for the currently picked color (any combination of that
+// color that carries an image), or null when colors have no images
+export function selectedColorImage(
+  product: Product,
+  selection: VariantSelection
+): string | null {
+  if (!selection.color) return null;
+  const withImage = (product.variants || []).find(
+    (v) => v.color === selection.color && v.imageUrl
+  );
+  return withImage?.imageUrl || null;
 }
 
 // True when the user has picked a value for every dimension the product offers
@@ -38,10 +54,12 @@ export function isSelectionComplete(
   const needsLength = variants.some((v) => v.lengthCm);
   const needsWeight = variants.some((v) => v.weightG);
   const needsTexture = variants.some((v) => v.texture);
+  const needsColor = variants.some((v) => v.color);
   return (
     (!needsLength || selection.lengthCm !== null) &&
     (!needsWeight || selection.weightG !== null) &&
-    (!needsTexture || selection.texture !== null)
+    (!needsTexture || selection.texture !== null) &&
+    (!needsColor || selection.color !== null)
   );
 }
 
@@ -74,6 +92,23 @@ export function VariantPicker({
     ],
     [variants]
   );
+  // Distinct colors with their swatch hex / thumbnail (first row wins)
+  const colors = useMemo(() => {
+    const byName = new Map<
+      string,
+      { name: string; hex: string | null; imageUrl: string | null }
+    >();
+    for (const v of variants) {
+      if (v.color && !byName.has(v.color)) {
+        byName.set(v.color, {
+          name: v.color,
+          hex: v.colorHex || null,
+          imageUrl: v.imageUrl || null,
+        });
+      }
+    }
+    return [...byName.values()];
+  }, [variants]);
 
   if (variants.length === 0) return null;
 
@@ -145,6 +180,59 @@ export function VariantPicker({
                 tex
               )
             )}
+          </div>
+        </div>
+      )}
+
+      {colors.length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-gray-600 mb-2">
+            Boja
+            {selection.color && (
+              <span className="text-gray-500 font-normal">
+                {" "}
+                — {selection.color}
+              </span>
+            )}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {colors.map((color) => {
+              const isSelected = selection.color === color.name;
+              return (
+                <button
+                  key={color.name}
+                  type="button"
+                  title={color.name}
+                  onClick={() =>
+                    onSelectionChange({ ...selection, color: color.name })
+                  }
+                  className={`relative w-11 h-11 rounded-full overflow-hidden border-2 transition-all ${
+                    isSelected
+                      ? "border-secondary ring-2 ring-secondary/30 scale-105"
+                      : "border-gray-300 hover:border-secondary"
+                  }`}
+                >
+                  {color.imageUrl ? (
+                    <Image
+                      src={color.imageUrl}
+                      alt={color.name}
+                      fill
+                      className="object-cover"
+                      sizes="44px"
+                    />
+                  ) : color.hex ? (
+                    <span
+                      className="absolute inset-0"
+                      style={{ backgroundColor: color.hex }}
+                    />
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-600 bg-gray-100 px-0.5 text-center leading-tight">
+                      {color.name}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

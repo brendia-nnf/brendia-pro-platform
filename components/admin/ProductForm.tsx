@@ -24,15 +24,24 @@ interface VariantRow {
   lengthCm: number | null;
   weightG: number | null;
   texture: HairTexture | null;
+  color: string | null;
   price: string;
   stockQuantity: string;
+}
+
+// Swatch/image are edited once per color and copied onto every combination row
+interface ColorOption {
+  name: string;
+  hex: string;
+  imageUrl: string;
 }
 
 const variantKey = (v: {
   lengthCm: number | null;
   weightG: number | null;
   texture: string | null;
-}) => `${v.lengthCm ?? ""}|${v.weightG ?? ""}|${v.texture ?? ""}`;
+  color: string | null;
+}) => `${v.lengthCm ?? ""}|${v.weightG ?? ""}|${v.texture ?? ""}|${v.color ?? ""}`;
 
 // Cjenik kose (duljina × gramaža) — predispuna za nove kombinacije
 const DEFAULT_VARIANT_PRICES: Record<string, string> = {
@@ -69,11 +78,28 @@ export function ProductForm({ product }: ProductFormProps) {
     lengthCm: v.lengthCm,
     weightG: v.weightG,
     texture: v.texture,
+    color: v.color ?? null,
     price: v.price.toString(),
     stockQuantity: v.stockQuantity.toString(),
   }));
 
+  const initialColorOptions: ColorOption[] = (() => {
+    const byName = new Map<string, ColorOption>();
+    for (const v of product?.variants || []) {
+      if (v.color && !byName.has(v.color)) {
+        byName.set(v.color, {
+          name: v.color,
+          hex: v.colorHex || "",
+          imageUrl: v.imageUrl || "",
+        });
+      }
+    }
+    return [...byName.values()];
+  })();
+
   const [variants, setVariants] = useState<VariantRow[]>(initialVariants);
+  const [colorOptions, setColorOptions] =
+    useState<ColorOption[]>(initialColorOptions);
   const [selectedLengths, setSelectedLengths] = useState<number[]>(() => [
     ...new Set(initialVariants.map((v) => v.lengthCm).filter((x): x is number => !!x)),
   ]);
@@ -91,7 +117,8 @@ export function ProductForm({ product }: ProductFormProps) {
   const regenerateVariants = (
     lengths: number[],
     weights: number[],
-    textures: HairTexture[]
+    textures: HairTexture[],
+    colors: string[]
   ) => {
     const dims = {
       lengths: lengths.length ? [...lengths].sort((a, b) => a - b) : [null],
@@ -99,6 +126,7 @@ export function ProductForm({ product }: ProductFormProps) {
       textures: textures.length
         ? VARIANT_TEXTURES.filter((t) => textures.includes(t))
         : [null],
+      colors: colors.length ? colors : [null],
     };
 
     setVariants((prev) => {
@@ -107,21 +135,24 @@ export function ProductForm({ product }: ProductFormProps) {
       for (const lengthCm of dims.lengths) {
         for (const weightG of dims.weights) {
           for (const texture of dims.textures) {
-            if (!lengthCm && !weightG && !texture) continue;
-            const key = variantKey({ lengthCm, weightG, texture });
-            const existing = byKey.get(key);
-            next.push(
-              existing || {
-                lengthCm,
-                weightG,
-                texture,
-                price:
-                  DEFAULT_VARIANT_PRICES[`${lengthCm}|${weightG}`] ||
-                  form.price ||
-                  "",
-                stockQuantity: "0",
-              }
-            );
+            for (const color of dims.colors) {
+              if (!lengthCm && !weightG && !texture && !color) continue;
+              const key = variantKey({ lengthCm, weightG, texture, color });
+              const existing = byKey.get(key);
+              next.push(
+                existing || {
+                  lengthCm,
+                  weightG,
+                  texture,
+                  color,
+                  price:
+                    DEFAULT_VARIANT_PRICES[`${lengthCm}|${weightG}`] ||
+                    form.price ||
+                    "",
+                  stockQuantity: "0",
+                }
+              );
+            }
           }
         }
       }
@@ -142,8 +173,50 @@ export function ProductForm({ product }: ProductFormProps) {
     regenerateVariants(
       dimension === "length" ? (next as number[]) : selectedLengths,
       dimension === "weight" ? (next as number[]) : selectedWeights,
-      dimension === "texture" ? (next as HairTexture[]) : selectedTextures
+      dimension === "texture" ? (next as HairTexture[]) : selectedTextures,
+      colorOptions.map((c) => c.name).filter(Boolean)
     );
+  };
+
+  const addColorOption = () => {
+    setColorOptions((prev) => [...prev, { name: "", hex: "#8b5a3c", imageUrl: "" }]);
+    // Combinations regenerate when the name is entered (empty names are ignored)
+  };
+
+  const removeColorOption = (index: number) => {
+    const next = colorOptions.filter((_, i) => i !== index);
+    setColorOptions(next);
+    regenerateVariants(
+      selectedLengths,
+      selectedWeights,
+      selectedTextures,
+      next.map((c) => c.name).filter(Boolean)
+    );
+  };
+
+  const updateColorOption = (
+    index: number,
+    field: keyof ColorOption,
+    value: string
+  ) => {
+    const prevName = colorOptions[index]?.name;
+    const next = colorOptions.map((c, i) =>
+      i === index ? { ...c, [field]: value } : c
+    );
+    setColorOptions(next);
+
+    if (field === "name") {
+      // Rename in place so entered prices/stock survive the rename
+      setVariants((rows) =>
+        rows.map((r) => (r.color === prevName ? { ...r, color: value || null } : r))
+      );
+      regenerateVariants(
+        selectedLengths,
+        selectedWeights,
+        selectedTextures,
+        next.map((c) => c.name).filter(Boolean)
+      );
+    }
   };
 
   const updateVariantField = (
@@ -159,6 +232,42 @@ export function ProductForm({ product }: ProductFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const colorFileInputRef = useRef<HTMLInputElement>(null);
+  const [colorUploadIndex, setColorUploadIndex] = useState<number | null>(null);
+
+  const handleColorImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    const index = colorUploadIndex;
+    if (!file || index === null) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "products");
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Upload failed");
+      }
+      const data = await response.json();
+      setColorOptions((prev) =>
+        prev.map((c, i) => (i === index ? { ...c, imageUrl: data.url } : c))
+      );
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+      setColorUploadIndex(null);
+      if (colorFileInputRef.current) colorFileInputRef.current.value = "";
+    }
+  };
 
   const generateSlug = (name: string) => {
     return name
@@ -231,11 +340,17 @@ export function ProductForm({ product }: ProductFormProps) {
 
     if (form.hasVariants) {
       if (variants.length === 0) {
-        alert("Odaberite barem jednu opciju (duljinu, gramažu ili teksturu).");
+        alert(
+          "Odaberite barem jednu opciju (duljinu, gramažu, teksturu ili boju)."
+        );
         return;
       }
       if (variants.some((v) => !v.price || Number(v.price) <= 0)) {
         alert("Svaka kombinacija mora imati cijenu.");
+        return;
+      }
+      if (colorOptions.some((c) => !c.name.trim())) {
+        alert("Svaka boja mora imati naziv (ili je uklonite).");
         return;
       }
     }
@@ -266,15 +381,23 @@ export function ProductForm({ product }: ProductFormProps) {
       weightGrams: form.weightGrams ? Number(form.weightGrams) : null,
       hasVariants: form.hasVariants,
       variants: form.hasVariants
-        ? variants.map((v) => ({
-            id: v.id,
-            lengthCm: v.lengthCm,
-            weightG: v.weightG,
-            texture: v.texture,
-            price: Number(v.price),
-            stockQuantity: Number(v.stockQuantity) || 0,
-            inStock: (Number(v.stockQuantity) || 0) > 0,
-          }))
+        ? variants.map((v) => {
+            const colorOption = v.color
+              ? colorOptions.find((c) => c.name === v.color)
+              : undefined;
+            return {
+              id: v.id,
+              lengthCm: v.lengthCm,
+              weightG: v.weightG,
+              texture: v.texture,
+              color: v.color,
+              colorHex: colorOption?.hex || null,
+              imageUrl: colorOption?.imageUrl || null,
+              price: Number(v.price),
+              stockQuantity: Number(v.stockQuantity) || 0,
+              inStock: (Number(v.stockQuantity) || 0) > 0,
+            };
+          })
         : [],
     };
 
@@ -499,10 +622,10 @@ export function ProductForm({ product }: ProductFormProps) {
           {/* Variants (hair options) */}
           <Card padding="lg">
             <h2 className="text-lg font-semibold text-primary mb-1">
-              Varijante proizvoda (kosa)
+              Varijante proizvoda
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              Za kosu: kupac bira duljinu, gramažu paketa i teksturu. Cijena i
+              Kupac bira duljinu, gramažu paketa, teksturu i/ili boju. Cijena i
               zaliha unose se za svaku kombinaciju.
             </p>
 
@@ -615,6 +738,116 @@ export function ProductForm({ product }: ProductFormProps) {
                   </div>
                 </div>
 
+                {/* Colors */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">Boje</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addColorOption}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Dodaj boju
+                    </Button>
+                  </div>
+                  {colorOptions.length === 0 ? (
+                    <p className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3">
+                      Bez boja — proizvod nema izbor boje. Dodajte boju pa joj
+                      odredite nijansu (krug u boji) i/ili učitajte sliku te
+                      varijante.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {colorOptions.map((color, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 border border-gray-200 rounded-lg p-2.5"
+                        >
+                          <input
+                            type="color"
+                            value={color.hex || "#8b5a3c"}
+                            onChange={(e) =>
+                              updateColorOption(index, "hex", e.target.value)
+                            }
+                            title="Nijansa za prikaz kupcu"
+                            className="h-9 w-9 rounded-full border border-gray-300 cursor-pointer shrink-0 p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={color.name}
+                            onChange={(e) =>
+                              updateColorOption(index, "name", e.target.value)
+                            }
+                            placeholder='Naziv boje (npr. "Natural Black")'
+                            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                          />
+                          {color.imageUrl ? (
+                            <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0 group/colorimg">
+                              <Image
+                                src={color.imageUrl}
+                                alt={color.name || "Boja"}
+                                fill
+                                className="object-cover"
+                                sizes="36px"
+                              />
+                              <button
+                                type="button"
+                                title="Ukloni sliku"
+                                onClick={() =>
+                                  updateColorOption(index, "imageUrl", "")
+                                }
+                                className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover/colorimg:opacity-100 transition-opacity flex items-center justify-center"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              title="Učitaj sliku ove boje (opcionalno)"
+                              disabled={isUploading}
+                              onClick={() => {
+                                setColorUploadIndex(index);
+                                colorFileInputRef.current?.click();
+                              }}
+                            >
+                              {isUploading && colorUploadIndex === index ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Upload className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          <button
+                            type="button"
+                            title="Ukloni boju"
+                            onClick={() => removeColorOption(index)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <p className="text-xs text-gray-500">
+                        Slika boje je opcionalna — ako postoji, kupcu se
+                        prikazuje umjesto kruga u boji i mijenja glavnu sliku
+                        proizvoda pri odabiru.
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    ref={colorFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleColorImageUpload}
+                    className="hidden"
+                  />
+                </div>
+
                 {/* Combination matrix */}
                 {variants.length > 0 ? (
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -643,6 +876,7 @@ export function ProductForm({ product }: ProductFormProps) {
                                 v.lengthCm ? `${v.lengthCm} cm` : null,
                                 v.weightG ? `${v.weightG} g` : null,
                                 v.texture ? TEXTURE_LABELS[v.texture] : null,
+                                v.color,
                               ]
                                 .filter(Boolean)
                                 .join(" · ")}

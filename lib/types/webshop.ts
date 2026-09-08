@@ -7,6 +7,9 @@ export interface ProductVariant {
   lengthCm: number | null;
   weightG: number | null;
   texture: HairTexture | null;
+  color: string | null;
+  colorHex?: string | null;
+  imageUrl?: string | null;
   price: number; // in euros on the client
   stockQuantity: number;
   inStock: boolean;
@@ -47,16 +50,18 @@ export const VARIANT_LENGTHS_CM = [40, 50, 60];
 export const VARIANT_WEIGHTS_G = [50, 60];
 export const VARIANT_TEXTURES: HairTexture[] = ["straight", "wavy", "curly"];
 
-// "40 cm · 50 g · Ravna" — used in cart, orders and Monri order info
+// "40 cm · 50 g · Ravna · Natural Black" — used in cart, orders and checkout line items
 export function variantLabel(variant: {
   lengthCm: number | null;
   weightG: number | null;
   texture: HairTexture | null;
+  color?: string | null;
 }): string {
   const parts: string[] = [];
   if (variant.lengthCm) parts.push(`${variant.lengthCm} cm`);
   if (variant.weightG) parts.push(`${variant.weightG} g`);
   if (variant.texture) parts.push(TEXTURE_LABELS[variant.texture]);
+  if (variant.color) parts.push(variant.color);
   return parts.join(" · ");
 }
 

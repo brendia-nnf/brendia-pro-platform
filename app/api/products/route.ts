@@ -33,6 +33,9 @@ export async function GET(request: NextRequest) {
       length_cm: number | null;
       weight_g: number | null;
       texture: string | null;
+      color: string | null;
+      color_hex: string | null;
+      image_url: string | null;
       price: number;
       stock_quantity: number;
       in_stock: boolean;
@@ -94,6 +97,9 @@ export async function GET(request: NextRequest) {
           lengthCm: v.length_cm,
           weightG: v.weight_g,
           texture: v.texture,
+          color: v.color,
+          colorHex: v.color_hex,
+          imageUrl: v.image_url,
           price: v.price / 100,
           stockQuantity: v.stock_quantity,
           inStock: v.in_stock,
@@ -102,7 +108,8 @@ export async function GET(request: NextRequest) {
           (a, b) =>
             (a.lengthCm || 0) - (b.lengthCm || 0) ||
             (a.weightG || 0) - (b.weightG || 0) ||
-            String(a.texture).localeCompare(String(b.texture))
+            String(a.texture).localeCompare(String(b.texture)) ||
+            String(a.color).localeCompare(String(b.color))
         ),
     }));
 

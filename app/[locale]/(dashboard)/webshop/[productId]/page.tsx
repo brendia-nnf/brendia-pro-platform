@@ -14,6 +14,7 @@ import {
   VariantPicker,
   findVariant,
   isSelectionComplete,
+  selectedColorImage,
   type VariantSelection,
 } from "@/components/webshop/VariantPicker";
 import { ArrowLeft, Truck, Shield, RotateCcw } from "lucide-react";
@@ -33,6 +34,7 @@ export default function ProductPage({ params }: ProductPageProps) {
     lengthCm: null,
     weightG: null,
     texture: null,
+    color: null,
   });
 
   useEffect(() => {
@@ -105,8 +107,20 @@ export default function ProductPage({ params }: ProductPageProps) {
 
         {/* Main product section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Gallery */}
-          <ProductGallery images={product.images} productName={product.name} />
+          {/* Gallery — picked color's image (when it has one) jumps to the front */}
+          {(() => {
+            const colorImage = selectedColorImage(product, selection);
+            const galleryImages = colorImage
+              ? [colorImage, ...product.images.filter((i) => i !== colorImage)]
+              : product.images;
+            return (
+              <ProductGallery
+                key={colorImage || "base"}
+                images={galleryImages}
+                productName={product.name}
+              />
+            );
+          })()}
 
           {/* Info and actions */}
           <div className="space-y-8">

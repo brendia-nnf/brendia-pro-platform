@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     const { data: variantRows } = variantIds.length
       ? ((await supabase
           .from("product_variants")
-          .select("id, product_id, length_cm, weight_g, texture, price, stock_quantity, in_stock")
+          .select("id, product_id, length_cm, weight_g, texture, color, price, stock_quantity, in_stock")
           .in("id", variantIds)) as {
           data: Array<{
             id: string;
@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
             length_cm: number | null;
             weight_g: number | null;
             texture: string | null;
+            color: string | null;
             price: number;
             stock_quantity: number;
             in_stock: boolean;
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
           lengthCm: variant.length_cm,
           weightG: variant.weight_g,
           texture: variant.texture as "straight" | "wavy" | "curly" | null,
+          color: variant.color,
         });
         if (!variant.in_stock || variant.stock_quantity < item.quantity) {
           return NextResponse.json(

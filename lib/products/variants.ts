@@ -5,6 +5,9 @@ export interface VariantPayload {
   lengthCm: number | null;
   weightG: number | null;
   texture: string | null;
+  color?: string | null;
+  colorHex?: string | null;
+  imageUrl?: string | null;
   price: number; // in euros from the admin form
   stockQuantity: number;
   inStock?: boolean;
@@ -21,8 +24,11 @@ export function validateVariants(variants: unknown): string | null {
     if (v.texture && !VALID_TEXTURES.includes(v.texture)) {
       return `Nepoznata tekstura: ${v.texture}`;
     }
-    if (!v.lengthCm && !v.weightG && !v.texture) {
-      return "Varijanta mora imati barem jednu opciju (duljina, gramaža ili tekstura)";
+    if (v.colorHex && !/^#[0-9a-fA-F]{6}$/.test(v.colorHex)) {
+      return `Neispravan hex kod boje: ${v.colorHex}`;
+    }
+    if (!v.lengthCm && !v.weightG && !v.texture && !v.color) {
+      return "Varijanta mora imati barem jednu opciju (duljina, gramaža, tekstura ili boja)";
     }
   }
   return null;
@@ -60,6 +66,9 @@ export async function syncProductVariants(
       length_cm: v.lengthCm || null,
       weight_g: v.weightG || null,
       texture: v.texture || null,
+      color: v.color || null,
+      color_hex: v.colorHex || null,
+      image_url: v.imageUrl || null,
       price: Math.round(Number(v.price) * 100),
       stock_quantity: Number(v.stockQuantity) || 0,
       in_stock: v.inStock ?? (Number(v.stockQuantity) || 0) > 0,
