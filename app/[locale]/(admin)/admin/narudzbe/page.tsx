@@ -11,7 +11,7 @@ export default function AdminOrdersPage() {
           Narudžbe
         </h1>
         <p className="text-gray-600 mt-1">
-          Pregledajte i upravljajte narudžbama iz webshopa.
+          Narudžbe tečajeva (tko je platio + adresa za welcome box) i webshopa.
         </p>
       </div>
 

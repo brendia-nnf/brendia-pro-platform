@@ -48,89 +48,99 @@ export async function GET(request: NextRequest) {
       status: string;
       createdAt: string;
       items?: unknown;
+      shippingAddress?: {
+        fullName: string;
+        street: string;
+        city: string;
+        postalCode: string;
+        country: string;
+        phone?: string;
+      };
+      paymentPlan?: string;
+      installmentsTotal?: number | null;
+      installmentsPaid?: number;
+      enrollmentCompletedAt?: string | null;
+      paidAt?: string | null;
     }> = [];
 
     let totalCount = 0;
 
-    // Fetch course enrollments
+    // Fetch course orders — the `orders` table is filled by the marketing
+    // checkout and is the source of truth for who bought/paid a course,
+    // including the billing address (welcome box shipping).
     if (!type || type === "all" || type === "course") {
-      let enrollmentQuery = adminClient
-        .from("enrollments")
+      let courseQuery = adminClient
+        .from("orders")
         .select("*", { count: "exact" })
-        .order("purchased_at", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (status) {
-        enrollmentQuery = enrollmentQuery.eq("status", status);
+        courseQuery = courseQuery.eq("status", status);
       }
 
-      interface EnrollmentRow {
+      interface CourseOrderRow {
         id: string;
-        user_id: string;
-        course_id: string;
-        package: string;
-        status: string;
-        amount_paid: number;
+        order_number: string | null;
+        customer_name: string;
+        email: string;
+        phone: string;
+        street: string;
+        city: string;
+        postal_code: string;
+        country: string;
+        company_name: string | null;
+        course_name: string;
+        amount: number;
         currency: string;
-        purchased_at: string;
+        status: string;
+        payment_plan: string | null;
+        installments_total: number | null;
+        installments_paid: number | null;
+        enrollment_completed_at: string | null;
+        paid_at: string | null;
+        created_at: string;
       }
 
-      const { data: enrollments, count: enrollmentCount } = await enrollmentQuery
-        .range(from, to) as { data: EnrollmentRow[] | null; count: number | null };
+      const { data: courseOrders, count: courseCount } = await courseQuery
+        .range(from, to) as { data: CourseOrderRow[] | null; count: number | null };
 
-      // Get user info for enrollments
-      if (enrollments && enrollments.length > 0) {
-        const userIds = [...new Set(enrollments.map((e) => e.user_id))];
-        const { data: authUsers } = await adminClient.auth.admin.listUsers({
-          perPage: 1000,
+      (courseOrders || []).forEach((o) => {
+        orders.push({
+          id: o.id,
+          type: "course",
+          orderNumber: o.order_number || `C-${o.id.slice(0, 8).toUpperCase()}`,
+          customerName: o.customer_name,
+          customerEmail: o.email,
+          total: o.amount / 100,
+          currency: (o.currency || "EUR").toUpperCase(),
+          status: o.status,
+          createdAt: o.created_at,
+          paymentPlan: o.payment_plan || "full",
+          installmentsTotal: o.installments_total,
+          installmentsPaid: o.installments_paid ?? 0,
+          enrollmentCompletedAt: o.enrollment_completed_at,
+          paidAt: o.paid_at,
+          items: [
+            {
+              name: o.course_name,
+              price: o.amount / 100,
+              quantity: 1,
+            },
+          ],
+          shippingAddress: {
+            fullName: o.company_name
+              ? `${o.customer_name} (${o.company_name})`
+              : o.customer_name,
+            street: o.street,
+            city: o.city,
+            postalCode: o.postal_code,
+            country: o.country,
+            phone: o.phone,
+          },
         });
+      });
 
-        const userMap: Record<string, { email: string; fullName: string }> = {};
-        authUsers?.users?.forEach((u) => {
-          if (userIds.includes(u.id)) {
-            userMap[u.id] = {
-              email: u.email || "",
-              fullName: u.user_metadata?.full_name || "",
-            };
-          }
-        });
-
-        const courseNames: Record<string, string> = {
-          // Actual course_id values used by enrollments (from marketing checkout)
-          "foundation-certification": "Brendia Pro® Artist",
-          "master-certification": "Advanced Brendia Pro® Artist",
-          "brendia-pro-artist-1v1": "Brendia Pro® Artist 1v1",
-          "brendia-pro-master-1v1": "Advanced Brendia Pro® Artist 1v1",
-          // Legacy short ids (fallback)
-          foundation: "Brendia Pro® Artist",
-          master: "Advanced Brendia Pro® Artist",
-          advanced: "Advanced Brendia Pro® Artist",
-        };
-
-        enrollments.forEach((e) => {
-          const productName = courseNames[e.course_id] || e.course_id;
-          orders.push({
-            id: e.id,
-            type: "course",
-            orderNumber: `C-${e.id.slice(0, 8).toUpperCase()}`,
-            customerName: userMap[e.user_id]?.fullName || "",
-            customerEmail: userMap[e.user_id]?.email || "",
-            total: e.amount_paid / 100,
-            currency: e.currency,
-            status: e.status,
-            createdAt: e.purchased_at,
-            items: [
-              {
-                name: productName,
-                package: e.package,
-                price: e.amount_paid / 100,
-                quantity: 1,
-              },
-            ],
-          });
-        });
-
-        totalCount += enrollmentCount || 0;
-      }
+      totalCount += courseCount || 0;
     }
 
     // Fetch webshop orders
@@ -149,6 +159,12 @@ export async function GET(request: NextRequest) {
         order_number: string;
         customer_name: string;
         customer_email: string;
+        customer_phone: string | null;
+        shipping_street: string;
+        shipping_city: string;
+        shipping_postal_code: string;
+        shipping_country: string;
+        shipping_phone: string | null;
         total: number;
         currency: string;
         status: string;
@@ -172,6 +188,14 @@ export async function GET(request: NextRequest) {
             status: o.status,
             createdAt: o.created_at,
             items: o.items,
+            shippingAddress: {
+              fullName: o.customer_name,
+              street: o.shipping_street,
+              city: o.shipping_city,
+              postalCode: o.shipping_postal_code,
+              country: o.shipping_country,
+              phone: o.shipping_phone || o.customer_phone || undefined,
+            },
           });
         });
 

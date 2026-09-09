@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
-import { Eye, Package, Truck, CheckCircle, XCircle, Clock, RefreshCw, Loader2 } from "lucide-react";
+import { Eye, Package, Truck, CheckCircle, XCircle, Clock, RefreshCw, Loader2, Copy } from "lucide-react";
 
 type OrderStatus = "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
 
@@ -32,7 +32,14 @@ interface Order {
     country: string;
     phone?: string;
   };
+  paymentPlan?: string;
+  installmentsTotal?: number | null;
+  installmentsPaid?: number;
+  enrollmentCompletedAt?: string | null;
+  paidAt?: string | null;
 }
+
+type OrderType = "all" | "course" | "webshop";
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Na čekanju",
@@ -69,16 +76,18 @@ export function OrdersTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<OrderType>("course");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [addressCopied, setAddressCopied] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({ type: "webshop" });
+      const params = new URLSearchParams({ type: typeFilter, limit: "100" });
       if (statusFilter !== "all") {
         params.set("status", statusFilter);
       }
@@ -95,7 +104,7 @@ export function OrdersTable() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, typeFilter]);
 
   useEffect(() => {
     fetchOrders();
@@ -125,7 +134,29 @@ export function OrdersTable() {
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
+    setAddressCopied(false);
     setDetailModalOpen(true);
+  };
+
+  const handleCopyAddress = async (order: Order) => {
+    const a = order.shippingAddress;
+    if (!a) return;
+    const text = [
+      a.fullName,
+      a.street,
+      `${a.postalCode} ${a.city}`,
+      a.country,
+      a.phone ? `Tel: ${a.phone}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setAddressCopied(true);
+      setTimeout(() => setAddressCopied(false), 2000);
+    } catch {
+      alert(text);
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -177,11 +208,34 @@ export function OrdersTable() {
     <>
       <Card padding="none">
         <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h3 className="font-semibold text-primary">Narudžbe</h3>
-            <p className="text-sm text-gray-500">
-              {orders.length} narudžbi
-            </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h3 className="font-semibold text-primary">Narudžbe</h3>
+              <p className="text-sm text-gray-500">
+                {orders.length} narudžbi
+              </p>
+            </div>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              {(
+                [
+                  { value: "course", label: "Tečajevi" },
+                  { value: "webshop", label: "Webshop" },
+                  { value: "all", label: "Sve" },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setTypeFilter(tab.value)}
+                  className={`px-3 py-1.5 text-sm transition-colors ${
+                    typeFilter === tab.value
+                      ? "bg-secondary text-white"
+                      : "bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <select
@@ -260,6 +314,13 @@ export function OrdersTable() {
                     </td>
                     <td className="py-3 px-4 text-sm font-medium text-primary text-right">
                       {formatPrice(order.total)}
+                      {order.paymentPlan === "installments" &&
+                        order.installmentsTotal && (
+                          <p className="text-xs font-normal text-gray-500">
+                            rate: {order.installmentsPaid ?? 0}/
+                            {order.installmentsTotal}
+                          </p>
+                        )}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <Badge variant={statusVariants[order.status]} size="sm">
@@ -352,10 +413,54 @@ export function OrdersTable() {
               <p className="text-sm text-gray-600">{selectedOrder.customerEmail}</p>
             </div>
 
+            {/* Payment plan (course orders) */}
+            {selectedOrder.type === "course" && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-medium text-primary mb-2">Plaćanje</h4>
+                <p className="text-sm text-gray-600">
+                  {selectedOrder.paymentPlan === "installments" &&
+                  selectedOrder.installmentsTotal
+                    ? `Na rate — plaćeno ${selectedOrder.installmentsPaid ?? 0} od ${selectedOrder.installmentsTotal}`
+                    : "Jednokratno"}
+                </p>
+                {selectedOrder.paidAt && (
+                  <p className="text-sm text-gray-600">
+                    Plaćeno: {formatDate(new Date(selectedOrder.paidAt))}
+                  </p>
+                )}
+                <p className="text-sm text-gray-600">
+                  {selectedOrder.enrollmentCompletedAt
+                    ? `Pristup platformi aktiviran: ${formatDate(new Date(selectedOrder.enrollmentCompletedAt))}`
+                    : "Pristup platformi još nije aktiviran"}
+                </p>
+              </div>
+            )}
+
             {/* Shipping address */}
             {selectedOrder.shippingAddress && (
               <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-primary mb-2">Adresa dostave</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-primary">
+                    {selectedOrder.type === "course"
+                      ? "Adresa (welcome box)"
+                      : "Adresa dostave"}
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopyAddress(selectedOrder)}
+                  >
+                    {addressCopied ? (
+                      <span className="flex items-center gap-1 text-success">
+                        <CheckCircle className="h-4 w-4" /> Kopirano
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <Copy className="h-4 w-4" /> Kopiraj
+                      </span>
+                    )}
+                  </Button>
+                </div>
                 <p className="text-sm">{selectedOrder.shippingAddress.fullName}</p>
                 <p className="text-sm text-gray-600">
                   {selectedOrder.shippingAddress.street}
