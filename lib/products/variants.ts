@@ -15,8 +15,12 @@ export interface VariantPayload {
 
 const VALID_TEXTURES = ["straight", "wavy", "curly"];
 
+const combinationKey = (v: VariantPayload) =>
+  `${v.lengthCm ?? ""}|${v.weightG ?? ""}|${v.texture ?? ""}|${(v.color ?? "").trim().toLowerCase()}`;
+
 export function validateVariants(variants: unknown): string | null {
   if (!Array.isArray(variants)) return "Variants must be an array";
+  const seen = new Set<string>();
   for (const v of variants as VariantPayload[]) {
     if (v.price === undefined || v.price === null || Number(v.price) < 0) {
       return "Svaka varijanta mora imati cijenu";
@@ -27,9 +31,14 @@ export function validateVariants(variants: unknown): string | null {
     if (v.colorHex && !/^#[0-9a-fA-F]{6}$/.test(v.colorHex)) {
       return `Neispravan hex kod boje: ${v.colorHex}`;
     }
-    if (!v.lengthCm && !v.weightG && !v.texture && !v.color) {
+    if (!v.lengthCm && !v.weightG && !v.texture && !v.color?.trim()) {
       return "Varijanta mora imati barem jednu opciju (duljina, gramaža, tekstura ili boja)";
     }
+    const key = combinationKey(v);
+    if (seen.has(key)) {
+      return `Dvije varijante imaju istu kombinaciju opcija${v.color ? ` (boja "${v.color.trim()}")` : ""} — provjerite da se boje ne ponavljaju`;
+    }
+    seen.add(key);
   }
   return null;
 }
@@ -66,7 +75,7 @@ export async function syncProductVariants(
       length_cm: v.lengthCm || null,
       weight_g: v.weightG || null,
       texture: v.texture || null,
-      color: v.color || null,
+      color: v.color?.trim() || null,
       color_hex: v.colorHex || null,
       image_url: v.imageUrl || null,
       price: Math.round(Number(v.price) * 100),
@@ -80,12 +89,23 @@ export async function syncProductVariants(
         .from("product_variants")
         .update(row as never)
         .eq("id", v.id);
-      if (error) return { error: "Failed to update variant" };
+      if (error) {
+        console.error("Variant update failed:", error);
+        return { error: "Failed to update variant" };
+      }
     } else {
       const { error } = await adminClient
         .from("product_variants")
         .insert(row as never);
-      if (error) return { error: "Failed to insert variant" };
+      if (error) {
+        console.error("Variant insert failed:", error, "row:", row);
+        return {
+          error:
+            error.code === "23505"
+              ? `Varijanta${row.color ? ` (boja "${row.color}")` : ""} već postoji — ista kombinacija opcija je unesena dvaput`
+              : "Failed to insert variant",
+        };
+      }
     }
   }
 

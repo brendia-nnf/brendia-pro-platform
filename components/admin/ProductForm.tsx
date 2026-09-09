@@ -131,6 +131,7 @@ export function ProductForm({ product }: ProductFormProps) {
 
     setVariants((prev) => {
       const byKey = new Map(prev.map((v) => [variantKey(v), v]));
+      const pushed = new Set<string>();
       const next: VariantRow[] = [];
       for (const lengthCm of dims.lengths) {
         for (const weightG of dims.weights) {
@@ -138,6 +139,8 @@ export function ProductForm({ product }: ProductFormProps) {
             for (const color of dims.colors) {
               if (!lengthCm && !weightG && !texture && !color) continue;
               const key = variantKey({ lengthCm, weightG, texture, color });
+              if (pushed.has(key)) continue;
+              pushed.add(key);
               const existing = byKey.get(key);
               next.push(
                 existing || {
@@ -353,6 +356,11 @@ export function ProductForm({ product }: ProductFormProps) {
         alert("Svaka boja mora imati naziv (ili je uklonite).");
         return;
       }
+      const colorNames = colorOptions.map((c) => c.name.trim().toLowerCase());
+      if (new Set(colorNames).size !== colorNames.length) {
+        alert("Dvije boje imaju isti naziv — svaka boja mora biti jedinstvena.");
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -390,7 +398,7 @@ export function ProductForm({ product }: ProductFormProps) {
               lengthCm: v.lengthCm,
               weightG: v.weightG,
               texture: v.texture,
-              color: v.color,
+              color: v.color?.trim() || null,
               colorHex: colorOption?.hex || null,
               imageUrl: colorOption?.imageUrl || null,
               price: Number(v.price),
