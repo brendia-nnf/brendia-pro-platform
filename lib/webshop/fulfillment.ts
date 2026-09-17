@@ -153,20 +153,41 @@ export async function fulfillWebshopOrder(
         quantity?: number;
       }>;
 
-      const lines: FakturkoLine[] = items
-        .filter((i) => i.name && i.price && i.quantity)
-        .map((i) => {
-          const gross = i.price! * i.quantity!;
-          return {
-            name: i.name!,
-            kpdCode: kpdProducts,
-            quantity: i.quantity!,
-            unitPriceWithoutVat: round2(i.price! / VAT),
-            priceWithoutVat: round2(gross / VAT),
-            vatPercentage: 25,
-            priceWithVat: round2(gross),
-          };
-        });
+      // Kupon se uračunava proporcionalno u cijene stavki umjesto kroz
+      // is_fixed_rabat — Fakturko kod is_fixed_rabat fiskalizira PUNU
+      // osnovicu i PDV (potvrdio Dejan 2026-09-16 za fakturu 154179), pa bi
+      // se PDV prijavljivao na iznos veći od naplaćenog.
+      const validItems = items.filter((i) => i.name && i.price && i.quantity);
+      const itemsGross = validItems.reduce(
+        (sum, i) => sum + i.price! * i.quantity!,
+        0
+      );
+      const discountGross = (order.discount || 0) / 100;
+      const discountFactor =
+        discountGross > 0 && itemsGross > 0
+          ? (itemsGross - discountGross) / itemsGross
+          : 1;
+
+      // Zadnja stavka pokupi ostatak zaokruživanja da zbroj stavki bude
+      // točno jednak naplaćenom iznosu proizvoda
+      let remainingGross = round2(itemsGross * discountFactor);
+      const lines: FakturkoLine[] = validItems.map((i, idx) => {
+        const fullGross = i.price! * i.quantity!;
+        const gross =
+          idx === validItems.length - 1
+            ? remainingGross
+            : round2(fullGross * discountFactor);
+        remainingGross = round2(remainingGross - gross);
+        return {
+          name: i.name!,
+          kpdCode: kpdProducts,
+          quantity: i.quantity!,
+          unitPriceWithoutVat: round2(gross / i.quantity! / VAT),
+          priceWithoutVat: round2(gross / VAT),
+          vatPercentage: 25,
+          priceWithVat: round2(gross),
+        };
+      });
 
       const shippingGross = order.shipping / 100;
       if (shippingGross > 0) {
@@ -182,7 +203,6 @@ export async function fulfillWebshopOrder(
       }
 
       const grossTotal = order.total / 100;
-      const discountGross = (order.discount || 0) / 100;
       const customerFullName =
         order.shipping_full_name || order.customer_name || "";
       const [firstName, ...rest] = customerFullName.trim().split(/\s+/);
@@ -202,9 +222,12 @@ export async function fulfillWebshopOrder(
         lines,
         totalWithoutVat: round2(grossTotal / VAT),
         totalWithVat: round2(grossTotal),
-        fixedRabat: discountGross > 0 ? discountGross : undefined,
         extRef: orderNumber,
-        note: `Webshop narudžba ${orderNumber} — plaćeno karticom putem Stripe`,
+        note: `Webshop narudžba ${orderNumber} — plaćeno karticom putem Stripe${
+          discountGross > 0
+            ? `. Popust kupona (${round2(discountGross).toFixed(2).replace(".", ",")} €) uračunat u cijene stavki.`
+            : ""
+        }`,
       });
 
       if (invoiceResult.ok) {
