@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient, createServerSupabaseClient } from "@/lib/supabase/server";
 import type { CartItem } from "@/lib/types/webshop";
-import { SHIPPING_THRESHOLD, SHIPPING_COST, variantLabel } from "@/lib/types/webshop";
+import { variantLabel } from "@/lib/types/webshop";
+import { getShippingQuote } from "@/lib/webshop/shipping";
 import {
   generateOrderNumber,
   createWebshopCheckoutSession,
@@ -211,8 +212,20 @@ export async function POST(request: NextRequest) {
       0
     );
 
-    // Calculate shipping (free over threshold)
-    const shipping = subtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+    // Shipping: free over threshold, otherwise live DHL rate with a
+    // flat-rate fallback — same function the checkout page quote uses,
+    // so the charged amount always matches what was shown
+    const { shipping } = await getShippingQuote({
+      items: resolvedItems.map((i) => ({
+        productId: i.productId,
+        variantId: i.variantId,
+        quantity: i.quantity,
+      })),
+      subtotal,
+      city: shippingCity,
+      postalCode: shippingPostalCode,
+      countryCode: shippingCountry,
+    });
 
     // Validate and apply coupon if provided
     let discount = 0;

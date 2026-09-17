@@ -24,6 +24,8 @@ interface Order {
     quantity?: number;
     subtotal?: number;
   }>;
+  trackingNumber?: string | null;
+  hasDhlLabel?: boolean;
   shippingAddress?: {
     fullName: string;
     street: string;
@@ -81,6 +83,12 @@ export function OrdersTable() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
   const [addressCopied, setAddressCopied] = useState(false);
+  // DHL shipment form state (order detail modal)
+  const [dhlWeight, setDhlWeight] = useState("");
+  const [dhlPickup, setDhlPickup] = useState(true);
+  const [dhlDate, setDhlDate] = useState("");
+  const [dhlCreating, setDhlCreating] = useState(false);
+  const [dhlError, setDhlError] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -135,7 +143,55 @@ export function OrdersTable() {
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setAddressCopied(false);
+    setDhlWeight("");
+    setDhlPickup(true);
+    setDhlDate("");
+    setDhlError(null);
     setDetailModalOpen(true);
+  };
+
+  const handleCreateDhlShipment = async (order: Order) => {
+    setDhlCreating(true);
+    setDhlError(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${order.id}/dhl`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(dhlWeight ? { weightKg: parseFloat(dhlWeight) } : {}),
+          requestPickup: dhlPickup,
+          ...(dhlDate ? { shippingDate: dhlDate } : {}),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Kreiranje pošiljke nije uspjelo");
+      }
+      setSelectedOrder({
+        ...order,
+        status: "shipped",
+        trackingNumber: data.trackingNumber,
+        hasDhlLabel: !!data.labelPath,
+      });
+      await fetchOrders();
+    } catch (err) {
+      setDhlError(err instanceof Error ? err.message : "Greška pri kreiranju pošiljke");
+    } finally {
+      setDhlCreating(false);
+    }
+  };
+
+  const handleDownloadLabel = async (order: Order) => {
+    try {
+      const response = await fetch(`/api/admin/orders/${order.id}/dhl`);
+      const data = await response.json();
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || "Naljepnica nije dostupna");
+      }
+      window.open(data.url, "_blank");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Greška pri dohvatu naljepnice");
+    }
   };
 
   const handleCopyAddress = async (order: Order) => {
@@ -510,6 +566,102 @@ export function OrdersTable() {
                 </div>
               </div>
             )}
+
+            {/* DHL shipment (webshop orders) */}
+            {selectedOrder.type === "webshop" &&
+              !["pending", "cancelled", "refunded"].includes(selectedOrder.status) && (
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-primary mb-3 flex items-center gap-2">
+                    <Truck className="h-4 w-4" /> DHL pošiljka
+                  </h4>
+                  {selectedOrder.trackingNumber ? (
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        Broj za praćenje:{" "}
+                        <a
+                          href={`https://www.dhl.com/hr-hr/home/tracking/tracking-express.html?submit=1&tracking-id=${selectedOrder.trackingNumber}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-secondary hover:underline"
+                        >
+                          {selectedOrder.trackingNumber}
+                        </a>
+                      </p>
+                      {selectedOrder.hasDhlLabel && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadLabel(selectedOrder)}
+                        >
+                          Preuzmi naljepnicu (PDF)
+                        </Button>
+                      )}
+                    </div>
+                  ) : ["paid", "processing"].includes(selectedOrder.status) ? (
+                    <div className="space-y-3">
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Težina paketa (kg) — prazno = automatski iz stavki
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            value={dhlWeight}
+                            onChange={(e) => setDhlWeight(e.target.value)}
+                            placeholder="npr. 1.5"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Datum slanja — prazno = prvi radni dan
+                          </label>
+                          <input
+                            type="date"
+                            value={dhlDate}
+                            onChange={(e) => setDhlDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                          />
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm text-gray-600">
+                        <input
+                          type="checkbox"
+                          checked={dhlPickup}
+                          onChange={(e) => setDhlPickup(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        Zatraži DHL pickup (kurir dolazi po paket)
+                      </label>
+                      {dhlError && <p className="text-sm text-error">{dhlError}</p>}
+                      <Button
+                        size="sm"
+                        onClick={() => handleCreateDhlShipment(selectedOrder)}
+                        disabled={dhlCreating}
+                      >
+                        {dhlCreating ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Kreiranje...
+                          </>
+                        ) : (
+                          "Kreiraj DHL pošiljku"
+                        )}
+                      </Button>
+                      <p className="text-xs text-gray-500">
+                        Kreira pošiljku, sprema naljepnicu, postavlja status
+                        &quot;Poslano&quot; i šalje kupcu email s brojem za praćenje.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      Pošiljka nije kreirana kroz DHL integraciju.
+                    </p>
+                  )}
+                </div>
+              )}
 
             {/* Order total */}
             <div className="border-t border-gray-200 pt-4">

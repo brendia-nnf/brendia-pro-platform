@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
       status: string;
       createdAt: string;
       items?: unknown;
+      trackingNumber?: string | null;
+      hasDhlLabel?: boolean;
       shippingAddress?: {
         fullName: string;
         street: string;
@@ -170,6 +172,8 @@ export async function GET(request: NextRequest) {
         status: string;
         created_at: string;
         items: unknown;
+        tracking_number: string | null;
+        dhl_label_path: string | null;
       }
 
       const { data: webshopOrders, count: webshopCount } = await webshopQuery
@@ -188,6 +192,8 @@ export async function GET(request: NextRequest) {
             status: o.status,
             createdAt: o.created_at,
             items: o.items,
+            trackingNumber: o.tracking_number,
+            hasDhlLabel: !!o.dhl_label_path,
             shippingAddress: {
               fullName: o.customer_name,
               street: o.shipping_street,

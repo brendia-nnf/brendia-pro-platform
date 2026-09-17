@@ -8,9 +8,16 @@ import { Truck, ShieldCheck } from "lucide-react";
 
 interface CartSummaryProps {
   showCheckoutButton?: boolean;
+  // Živa DHL cijena s blagajne — kad je poznata, zamjenjuje paušalnu
+  shippingOverride?: number | null;
+  shippingLoading?: boolean;
 }
 
-export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
+export function CartSummary({
+  showCheckoutButton = true,
+  shippingOverride = null,
+  shippingLoading = false,
+}: CartSummaryProps) {
   const { items, getSubtotal, getShipping, getCartTotal } = useCart();
 
   const formatPrice = (price: number) => {
@@ -21,8 +28,8 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
   };
 
   const subtotal = getSubtotal();
-  const shipping = getShipping();
-  const total = getCartTotal();
+  const shipping = shippingOverride ?? getShipping();
+  const total = shippingOverride !== null ? subtotal + shippingOverride : getCartTotal();
 
   const amountToFreeShipping = SHIPPING_THRESHOLD - subtotal;
   const hasFreeShipping = amountToFreeShipping <= 0;
@@ -42,9 +49,13 @@ export function CartSummary({ showCheckoutButton = true }: CartSummaryProps) {
 
         {/* Shipping */}
         <div className="flex justify-between text-gray-600">
-          <span>Dostava</span>
+          <span>Dostava{shippingOverride !== null && !hasFreeShipping ? " (DHL)" : ""}</span>
           <span className={hasFreeShipping ? "text-success" : ""}>
-            {hasFreeShipping ? "Besplatno" : formatPrice(shipping)}
+            {shippingLoading
+              ? "..."
+              : hasFreeShipping
+                ? "Besplatno"
+                : formatPrice(shipping)}
           </span>
         </div>
 

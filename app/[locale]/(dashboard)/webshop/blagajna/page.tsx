@@ -50,6 +50,9 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
+  // Živa DHL cijena dostave za unesenu adresu (null dok adresa nije potpuna)
+  const [liveShipping, setLiveShipping] = useState<number | null>(null);
+  const [shippingLoading, setShippingLoading] = useState(false);
 
   const [shippingForm, setShippingForm] = useState<ShippingForm>({
     fullName: "",
@@ -73,6 +76,49 @@ export default function CheckoutPage() {
       }));
     }
   }, [user]);
+
+  // Kad su grad, poštanski broj i država uneseni, dohvati stvarnu cijenu
+  // dostave (DHL rate); naplaćuje se ista jer create-checkout zove isti
+  // izračun na serveru
+  useEffect(() => {
+    const { city, postalCode, country } = shippingForm;
+    if (!city || postalCode.length < 2 || !country || items.length === 0) {
+      setLiveShipping(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setShippingLoading(true);
+      try {
+        const response = await fetch("/api/webshop/shipping-quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((item) => ({
+              productId: item.product.id,
+              variantId: item.variant?.id || null,
+              quantity: item.quantity,
+            })),
+            city,
+            postalCode,
+            country,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setLiveShipping(typeof data.shipping === "number" ? data.shipping : null);
+        } else {
+          setLiveShipping(null);
+        }
+      } catch {
+        setLiveShipping(null);
+      } finally {
+        setShippingLoading(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [shippingForm.city, shippingForm.postalCode, shippingForm.country, items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -376,7 +422,11 @@ export default function CheckoutPage() {
           {/* Summary */}
           <div className="lg:col-span-1">
             <div className="sticky top-24">
-              <CartSummary showCheckoutButton={false} />
+              <CartSummary
+                showCheckoutButton={false}
+                shippingOverride={liveShipping}
+                shippingLoading={shippingLoading}
+              />
             </div>
           </div>
         </div>
